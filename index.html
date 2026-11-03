@@ -145,6 +145,9 @@ tailwind.config = {
   .cat-row .nl{font-size:13px; color:var(--muted); flex:none}
   .sheet-label{display:flex; align-items:center; gap:8px; padding:12px 12px 4px; font:700 13px Figtree,system-ui,sans-serif; color:var(--muted); text-transform:uppercase; letter-spacing:.05em}
   .menu-item.in-cat{padding-left:28px}
+  .br-ico{width:30px; height:30px; flex:none; border-radius:9px; display:grid; place-items:center; color:#fff; font:800 14px Figtree,system-ui,sans-serif}
+  .br-opt{display:flex; align-items:center; gap:8px; padding:9px 10px; border:1.5px solid var(--line); border-radius:10px; font-size:14px; cursor:pointer}
+  .br-opt input{width:18px; height:18px; accent-color:var(--accent); flex:none}
   .menu-item:disabled{opacity:.4; cursor:not-allowed}
   #tabs .tab, #listSheetItems .menu-item{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none}
   #tabs .tab.pressing, #listSheetItems .menu-item.pressing{transform:scale(.97); transition:transform .15s}
@@ -680,6 +683,12 @@ tailwind.config = {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
     </div>
+    <section class="mt-5" aria-labelledby="openTitle">
+      <p id="openTitle" class="font-semibold text-[15.5px] mb-2">Al abrir un vídeo</p>
+      <span class="selwrap"><select id="optOpenWith" aria-labelledby="openTitle" style="padding-left:13px"></select></span>
+      <p class="text-muted text-[13.5px] mt-3 mb-2">Navegadores que aparecen al preguntar (solo en Android):</p>
+      <div id="optBrowsers" class="grid grid-cols-2 gap-2"></div>
+    </section>
     <fieldset class="mt-5">
       <legend class="font-semibold text-[15.5px] mb-2">Diseño de la app</legend>
       <div class="flex flex-col gap-2" id="layoutOpts">
@@ -774,6 +783,18 @@ tailwind.config = {
   <div class="px-2 pb-3"><button class="btn w-full" type="button" id="ssCancel">Cancelar</button></div>
 </dialog>
 
+<dialog id="browserSheet" class="sheet" aria-labelledby="bsTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <p id="bsTitle" class="font-display font-extrabold text-xl px-5 pt-2">¿Dónde lo abro?</p>
+  <p id="bsWhat" class="text-muted text-[13.5px] px-5 pb-1"></p>
+  <div class="cm-body" id="browserSheetItems"></div>
+  <label class="flex items-center gap-3 px-5 py-3 text-[14.5px] cursor-pointer">
+    <input type="checkbox" id="bsRemember" style="width:20px;height:20px;accent-color:var(--accent)">
+    Recordar mi elección (se puede cambiar en Ajustes)
+  </label>
+  <div class="px-2 pb-3"><button class="btn w-full" type="button" id="bsCancel">Cancelar</button></div>
+</dialog>
+
 <dialog id="cardMenu" class="sheet" aria-labelledby="cmTitle">
   <div class="grab" aria-hidden="true"></div>
   <div class="cm-head">
@@ -848,6 +869,8 @@ tailwind.config = {
     s.categories.forEach(c => { delete c.open; });
     if (!s.settings || typeof s.settings !== 'object') s.settings = {};
     if (typeof s.settings.noDup !== 'boolean') s.settings.noDup = true;
+    if (typeof s.settings.openWith !== 'string') s.settings.openWith = 'ask';
+    if (!Array.isArray(s.settings.browsers)) s.settings.browsers = ['chrome', 'firefox', 'edge', 'samsung', 'brave', 'youtube'];
     if (!['classic', 'a', 'b', 'c'].includes(s.settings.layout)) s.settings.layout = 'classic';
     if (!Array.isArray(s.links)) s.links = [
       { id: uid(), name: 'Extractor de vídeos de listas de YouTube', url: 'https://youtube-extractor-seven.vercel.app/' }
@@ -1341,8 +1364,78 @@ tailwind.config = {
     const ord = l ? visible(l) : [];
     if (!ord[i]) return;
     const ids = ord.slice(i, i + 50).map(v => v.vid);
-    window.open('https://www.youtube.com/watch_videos?video_ids=' + ids.join(','), '_blank', 'noopener');
+    openUrl('https://www.youtube.com/watch_videos?video_ids=' + ids.join(','), ord[i].title);
   }
+
+  /* ---------- Elegir navegador (Android) ---------- */
+  const IS_ANDROID = /Android/i.test(navigator.userAgent);
+  const BROWSERS = [
+    { id: 'chrome', name: 'Chrome', pkg: 'com.android.chrome', color: '#1A73E8', ini: 'C' },
+    { id: 'firefox', name: 'Firefox', pkg: 'org.mozilla.firefox', color: '#E66000', ini: 'F' },
+    { id: 'edge', name: 'Edge', pkg: 'com.microsoft.emmx', color: '#0C8A7D', ini: 'E' },
+    { id: 'samsung', name: 'Samsung Internet', pkg: 'com.sec.android.app.sbrowser', color: '#6C4FD8', ini: 'S' },
+    { id: 'brave', name: 'Brave', pkg: 'com.brave.browser', color: '#E0421B', ini: 'B' },
+    { id: 'opera', name: 'Opera', pkg: 'com.opera.browser', color: '#C4141E', ini: 'O' },
+    { id: 'duckduckgo', name: 'DuckDuckGo', pkg: 'com.duckduckgo.mobile.android', color: '#C9471E', ini: 'D' },
+    { id: 'vivaldi', name: 'Vivaldi', pkg: 'com.vivaldi.browser', color: '#C42B2B', ini: 'V' },
+    { id: 'youtube', name: 'App de YouTube', pkg: 'com.google.android.youtube', color: '#D32F2F', ini: '▶' }
+  ];
+  const SYSTEM = { id: 'system', name: 'Navegador predeterminado', pkg: null, color: '#5B6578', ini: '◎' };
+  const browserById = id => id === 'system' ? SYSTEM : BROWSERS.find(b => b.id === id);
+  // Enlace "intent" de Android: abre la dirección en la app indicada; si no está instalada, en el navegador normal
+  function intentUrl(url, pkg) {
+    const u = new URL(url);
+    return `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=${u.protocol.replace(':', '')};action=android.intent.action.VIEW;package=${pkg};S.browser_fallback_url=${encodeURIComponent(url)};end`;
+  }
+  function launch(url, b) {
+    if (!b || !b.pkg || !IS_ANDROID) { window.open(url, '_blank', 'noopener'); return; }
+    const a = document.createElement('a');
+    a.href = intentUrl(url, b.pkg); a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  const browserSheet = $('#browserSheet');
+  let pendingUrl = null;
+  function openUrl(url, what) {
+    const mode = state.settings.openWith;
+    if (!IS_ANDROID || mode === 'system') { launch(url, SYSTEM); return; }
+    if (mode !== 'ask' && browserById(mode)) { launch(url, browserById(mode)); return; }
+    pendingUrl = url;
+    $('#bsWhat').textContent = what ? `Desde «${what}»` : '';
+    const list = [...state.settings.browsers.map(browserById).filter(Boolean), SYSTEM];
+    $('#browserSheetItems').innerHTML = list.map(b => `<button class="menu-item" type="button" data-br="${b.id}">
+        <span class="br-ico" style="background:${b.color}" aria-hidden="true">${b.ini}</span>${esc(b.name)}</button>`).join('');
+    $('#bsRemember').checked = false;
+    browserSheet.showModal();
+    const first = $('#browserSheetItems .menu-item'); if (first) first.focus();
+  }
+  $('#browserSheetItems').addEventListener('click', e => {
+    const btn = e.target.closest('[data-br]');
+    if (!btn || !pendingUrl) return;
+    const b = browserById(btn.dataset.br);
+    if ($('#bsRemember').checked) {
+      state.settings.openWith = b.id; save();
+      toast(`Los vídeos se abrirán siempre en ${b.name}. Puedes cambiarlo en Ajustes.`);
+    }
+    const url = pendingUrl; pendingUrl = null;
+    browserSheet.close();
+    launch(url, b);
+  });
+  $('#bsCancel').addEventListener('click', () => browserSheet.close());
+  browserSheet.addEventListener('click', e => { if (e.target === browserSheet) browserSheet.close(); });
+  browserSheet.addEventListener('close', () => { pendingUrl = null; });
+  // Ajustes: dónde abrir
+  function renderOpenSettings() {
+    const sel = $('#optOpenWith');
+    sel.innerHTML = `<option value="ask">Preguntar en qué navegador abrirlo</option><option value="system">Abrir en el navegador predeterminado</option>`
+      + BROWSERS.map(b => `<option value="${b.id}">Abrir siempre en ${esc(b.name)}</option>`).join('');
+    sel.value = state.settings.openWith;
+    $('#optBrowsers').innerHTML = BROWSERS.map(b => `<label class="br-opt"><input type="checkbox" value="${b.id}"${state.settings.browsers.includes(b.id) ? ' checked' : ''}>${esc(b.name)}</label>`).join('');
+  }
+  $('#optOpenWith').addEventListener('change', e => { state.settings.openWith = e.target.value; save(); });
+  $('#optBrowsers').addEventListener('change', () => {
+    state.settings.browsers = [...document.querySelectorAll('#optBrowsers input:checked')].map(i => i.value);
+    save();
+  });
 
   /* ---------- Pintar ---------- */
   const FOLDER_SVG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
@@ -1941,6 +2034,7 @@ tailwind.config = {
   $('#settingsBtn').addEventListener('click', () => {
     $('#optNoDup').checked = state.settings.noDup;
     renderCatAdmin();
+    renderOpenSettings();
     document.querySelectorAll('input[name="layout"]').forEach(r => { r.checked = r.value === state.settings.layout; });
     setDlg.showModal();
   });

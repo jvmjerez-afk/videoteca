@@ -1,0 +1,2228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Videoteca · listas de YouTube</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#EEF1F6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121722" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+tailwind.config = {
+  theme: { extend: {
+    colors: {
+      bg: 'var(--bg)', surface: 'var(--surface)', ink: 'var(--ink)', muted: 'var(--muted)',
+      line: 'var(--line)', accent: 'var(--accent)', 'accent-ink': 'var(--accent-ink)', live: 'var(--live)'
+    },
+    fontFamily: {
+      display: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
+      body: ['Figtree', 'system-ui', 'sans-serif']
+    }
+  } }
+};
+</script>
+<style>
+  :root{
+    --bg:#EEF1F6; --surface:#FFFFFF; --ink:#18202E; --muted:#5B6578; --line:#D4DAE4;
+    --accent:#2B45F0; --accent-ink:#FFFFFF; --live:#FFB81F; --danger:#C8283C;
+    color-scheme: light;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#121722; --surface:#1B2231; --ink:#E8ECF4; --muted:#9BA5B7; --line:#2D3648;
+      --accent:#7487FF; --accent-ink:#0D1120; --live:#FFC23A; --danger:#FF6B7D;
+      color-scheme: dark;
+    }
+  }
+  *,*::before,*::after{box-sizing:inherit}
+  [hidden]{display:none !important}
+  html,body{background:var(--bg); color:var(--ink)}
+  body{font-family:Figtree,system-ui,sans-serif; -webkit-font-smoothing:antialiased}
+  :focus-visible{outline:3px solid var(--accent); outline-offset:2px; border-radius:6px}
+
+  /* Pestañas de listas */
+  .layout{display:block}
+  .side{margin-bottom:28px}
+  .side-title{font:700 12px/1 Figtree,system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 10px 2px}
+  @media (min-width:1024px){
+    .layout{display:grid; grid-template-columns:250px minmax(0,1fr); gap:40px; align-items:start}
+    .side{position:sticky; top:16px; margin-bottom:0; max-height:calc(100vh - 32px); overflow-y:auto; padding:2px}
+  }
+  .tabs{display:flex; flex-direction:column; gap:6px}
+  .tab{display:flex; width:100%; align-items:center; gap:10px; padding:11px 12px 11px 14px; border-radius:10px; text-align:left;
+       border:1.5px solid var(--line); background:var(--surface); color:var(--ink); font-weight:600; font-size:15px; cursor:pointer}
+  .tab .name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .tab:hover{border-color:var(--accent)}
+  .tab[aria-selected="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+  .tab .count{font-size:12px; font-weight:700; min-width:22px; padding:1px 7px; border-radius:999px;
+              background:color-mix(in srgb, currentColor 14%, transparent); text-align:center}
+  .tab .dot{width:8px; height:8px; border-radius:50%; background:var(--live); box-shadow:0 0 0 3px color-mix(in srgb, var(--live) 35%, transparent)}
+  .tab.add{border-style:dashed; color:var(--muted); background:transparent; justify-content:center}
+
+  /* Selectores de vista y orden */
+  .sel{display:block; flex:1 1 0; min-width:0; max-width:300px}
+  .selwrap{position:relative}
+  .selwrap::after{content:""; position:absolute; right:15px; top:50%; width:8px; height:8px; border-right:2px solid var(--muted);
+                  border-bottom:2px solid var(--muted); transform:translateY(-70%) rotate(45deg); pointer-events:none}
+  .selwrap > svg{position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none}
+  .selwrap::after{right:12px !important; width:7px !important; height:7px !important}
+  .selwrap select{appearance:none; -webkit-appearance:none; width:100%; padding:8px 28px 8px 32px; border-radius:9px; font:600 14px Figtree,system-ui,sans-serif;
+                  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+                  border:1.5px solid var(--line); background:var(--surface); color:var(--ink); cursor:pointer}
+  .selwrap select:hover{border-color:var(--ink)}
+  .selwrap select:focus{outline:none; border-color:var(--accent)}
+
+  /* Modo selección */
+  .check{display:none; position:absolute; left:8px; top:8px; z-index:2; width:28px; height:28px; border-radius:50%;
+         place-items:center; background:rgba(10,14,24,.55); border:2px solid #fff; color:transparent}
+  body.selecting .check{display:grid}
+  body.selecting .remove, body.selecting .badge{display:none !important}
+  .card.is-sel .check{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+  .card.is-sel .thumb{outline-color:var(--accent) !important}
+  .card.is-sel .thumb img{opacity:.8}
+  body.selecting .view-grid-s .check, body.selecting .view-mosaic .check{width:22px; height:22px; left:4px; top:4px}
+  body.selecting .view-mosaic .check svg{width:12px; height:12px}
+  body.selecting .view-compact .cpos{display:none}
+  .view-compact .check{position:static; flex:none; margin-left:4px; border-color:var(--muted); background:transparent}
+  .view-compact .card.is-sel{background:color-mix(in srgb, var(--accent) 12%, transparent)}
+  .view-list-l .check, .view-list-m .check{left:8px; top:8px}
+  #selectBtn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+  .selbar{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(14px + env(safe-area-inset-bottom,0px)); z-index:40;
+          width:min(720px, calc(100% - 20px)); display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:10px 10px 10px 16px;
+          border-radius:16px; background:var(--ink); color:var(--bg); box-shadow:0 12px 36px rgba(0,0,0,.3)}
+  .selbar .count{font-weight:700; font-size:15.5px; margin-right:auto}
+  .selbar .btn{border-color:color-mix(in srgb, var(--bg) 25%, transparent); background:transparent; color:var(--bg); padding:9px 13px}
+  .selbar .btn:hover:not(:disabled){border-color:var(--bg)}
+  .selbar .btn.del{background:var(--danger); border-color:var(--danger); color:#fff}
+  body.selecting #toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+  body.selecting .pb-24{padding-bottom:140px}
+
+  /* ---------- Diseños ---------- */
+  .listhead{margin-bottom:20px}
+  .titlerow{display:flex; align-items:center; gap:8px}
+  .titlerow h2{flex:1; min-width:0}
+  .acts{display:flex; flex-direction:column; gap:8px; margin-top:16px}
+  #playHome{display:flex}
+  @media (max-width:639px){ body.lay-classic #playHome .btn{width:100%} }
+  .pickrow{display:none; gap:8px; align-items:center}
+  .picker{flex:1; min-width:0; height:46px; display:flex; align-items:center; gap:10px; padding:0 12px 0 14px; border-radius:12px;
+          border:1.5px solid var(--line); background:var(--surface); color:var(--ink); font:700 16px Figtree,system-ui,sans-serif; text-align:left; cursor:pointer}
+  .picker:hover{border-color:var(--ink)}
+  .pk-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .pk-count{font-size:12px; font-weight:700; color:var(--muted); background:var(--bg); border-radius:999px; padding:2px 8px}
+  .picker svg{color:var(--muted); flex:none}
+  .hdr-search{display:none}
+  .act-menu-wrap{display:none}
+  .btn.sm-ico{width:42px; height:42px; border-radius:10px}
+  .bottombar{display:none}
+  .tab .ini{display:none}
+  .lay-opt{display:flex; gap:12px; align-items:flex-start; padding:12px 14px; border:1.5px solid var(--line); border-radius:12px; cursor:pointer}
+  .lay-opt:has(input:checked){border-color:var(--accent); background:color-mix(in srgb, var(--accent) 7%, transparent)}
+  .lay-opt input{width:20px; height:20px; margin-top:2px; flex:none; accent-color:var(--accent)}
+  .lay-opt b{display:block; font-size:15px}
+  .lay-opt small{display:block; color:var(--muted); font-size:13.5px; margin-top:2px; line-height:1.4}
+
+  /* Categorías en el selector */
+  .tab .fico{display:inline-flex; color:var(--muted); flex:none}
+  .tab .chev{flex:none; color:var(--muted); transition:transform .15s}
+  .tab.cat[aria-expanded="true"] .chev{transform:rotate(90deg)}
+  .tab.cat{background:transparent; font-weight:700}
+  .tab.cat.has-active{border-color:var(--accent)}
+  .tab.in-cat{margin-left:18px; width:calc(100% - 18px)}
+  .tab .c2.lists{background:none; padding:0; font-weight:600}
+  .cat-row{display:flex; align-items:center; gap:6px; padding:8px 6px 8px 12px; border:1.5px solid var(--line); border-radius:12px}
+  .cat-row .nm{flex:1; min-width:0; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .cat-row .nl{font-size:13px; color:var(--muted); flex:none}
+  .sheet-label{display:flex; align-items:center; gap:8px; padding:12px 12px 4px; font:700 13px Figtree,system-ui,sans-serif; color:var(--muted); text-transform:uppercase; letter-spacing:.05em}
+  .menu-item.in-cat{padding-left:28px}
+  .menu-item:disabled{opacity:.4; cursor:not-allowed}
+  #tabs .tab, #listSheetItems .menu-item{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none}
+  #tabs .tab.pressing, #listSheetItems .menu-item.pressing{transform:scale(.97); transition:transform .15s}
+  .cat-toggle .chev{flex:none; color:var(--muted); transition:transform .15s}
+  .cat-toggle .count{margin-left:auto}
+  .cat-toggle[aria-expanded="true"] .chev{transform:rotate(90deg)}
+  .namebtn{display:inline-flex; align-items:center; gap:8px; max-width:100%; padding:0; border:0; background:none; color:inherit;
+           font:inherit; letter-spacing:inherit; text-align:left; cursor:pointer; border-radius:6px}
+  .namebtn span{overflow-wrap:anywhere}
+  .namebtn svg{flex:none; color:var(--muted); opacity:.55; transition:opacity .15s}
+  .namebtn:hover svg, .namebtn:focus-visible svg{opacity:1}
+  body.lay-b .tab .fico, body.lay-b .tab .chev{display:none}
+  body.lay-b .tab.cat .ini{background:transparent; border:1.5px solid var(--line); color:var(--muted)}
+  body.lay-b .tab.cat.has-active .ini{border-color:var(--accent); color:var(--accent)}
+  body.lay-b .tab.in-cat{width:66px; margin-left:6px; border-left:2px solid var(--line); border-radius:0 12px 12px 0}
+  body.lay-b .tab.in-cat .ini{width:34px; height:34px; font-size:15px}
+  body.lay-c .tab.in-cat{margin-left:0; width:auto; background:color-mix(in srgb, var(--accent) 8%, var(--surface))}
+  body.lay-c .tab .chev{transform:rotate(0)}
+  body.lay-c .tab.cat[aria-expanded="true"] .chev{transform:rotate(180deg)}
+
+  /* Cabecera compacta (A, B y C) */
+  body.compact #appHeader, body.compact #hdrBtns{display:flex}
+  .selwrap{display:block}
+  body.lay-c #linksBtn{display:none}
+  body.lay-c #appTitle{font-size:22px}
+  body.lay-c .hdr-search .searchbox > svg{left:11px}
+  body.lay-c .hdr-search .searchbox input{padding-left:32px; padding-right:34px}
+  body.lay-c .hdr-search #searchClear{width:32px; height:32px; right:3px}
+  body.lay-c .selwrap select{width:auto; max-width:46vw}
+  body.compact #appHeader{align-items:center; flex-wrap:nowrap; gap:4px; padding-top:10px; padding-bottom:8px}
+  body.compact #appTitle{font-size:26px; letter-spacing:-.5px}
+  body.compact #hdrBtns{flex-wrap:nowrap; gap:0}
+  body.compact .hbtn{width:44px; height:44px; padding:0}
+  body.compact .hbtn .lbl{display:none}
+  body.compact .listhead{margin-bottom:10px}
+  body.compact #listMeta{font-size:12.5px; margin-top:4px}
+  body.compact #toolbar{margin-bottom:12px; gap:6px; flex-wrap:nowrap; align-items:center}
+  body.compact .searchbox{flex:1 1 auto; min-width:0}
+  body.compact .searchbox input{min-height:42px; font-size:14.5px}
+  body.compact .sel{flex:none}
+  /* Vista y orden como iconos (A y B) */
+  body.lay-a .sel, body.lay-b .sel{width:42px}
+  body.lay-a .selwrap::after, body.lay-b .selwrap::after{display:none}
+  body.lay-a .selwrap > svg, body.lay-b .selwrap > svg{left:50%; transform:translate(-50%,-50%); color:var(--ink)}
+  body.lay-a .selwrap select, body.lay-b .selwrap select{width:42px; height:42px; padding:0; color:transparent; text-indent:-999px}
+  body.lay-a .selwrap select option, body.lay-b .selwrap select option{color:var(--ink)}
+
+  /* A · Selector desplegable */
+  body.lay-a .side{display:none}
+  body.lay-a .layout{display:block}
+  body.lay-a .pickrow{display:flex}
+  body.lay-a #titleRow{display:none}
+  body.lay-a #playAllBtn{height:46px; padding:0 14px; border-radius:12px}
+  body.lay-a #playAllBtn .pa-ext{display:none}
+  body.lay-a .actrow{display:none}
+  body.lay-a .acts{display:none}
+  body.lay-a .act-menu-wrap{display:block}
+  body.lay-a #listMeta{margin:6px 2px 0}
+
+  /* B · Raíl de listas */
+  body.lay-b .layout{display:grid; grid-template-columns:76px minmax(0,1fr); gap:12px; align-items:start}
+  body.lay-b .side{position:sticky; top:8px; margin:0; max-height:calc(100vh - 16px); overflow-y:auto; padding:0 0 8px; border-right:1.5px solid var(--line)}
+  body.lay-b .side-title{display:none}
+  body.lay-b .tabs{gap:4px; align-items:center}
+  body.lay-b .tab{flex-direction:column; width:70px; gap:4px; padding:6px 2px; border:0; background:transparent; justify-content:center}
+  body.lay-b .tab[aria-selected="true"]{background:var(--surface); color:var(--ink)}
+  body.lay-b .tab .ini{display:grid; position:relative; width:40px; height:40px; border-radius:12px; place-items:center; background:var(--line);
+                       font:800 17px "Bricolage Grotesque",system-ui,sans-serif; text-transform:uppercase}
+  body.lay-b .tab[aria-selected="true"] .ini{background:var(--accent); color:var(--accent-ink)}
+  body.lay-b .tab .name{font-size:11.5px; max-width:66px; flex:none; text-align:center}
+  body.lay-b .tab .ini .count{position:absolute; top:-5px; right:-9px; min-width:18px; padding:1px 5px; font-size:10px; line-height:16px; background:var(--ink); color:var(--bg)}
+  body.lay-b .tab.add{width:44px; height:44px; padding:0; margin-top:4px; border:1.5px dashed var(--muted); border-radius:12px}
+  body.lay-b .tab.add .name{display:none}
+  body.lay-b .tab.add .ini{display:block; width:auto; height:auto; background:none; font-size:22px; color:var(--muted)}
+  body.lay-b #listName{font-size:22px}
+  body.lay-b .tab .c2{display:none}
+  body.lay-b #playAllBtn{width:42px; height:42px; padding:0; border-radius:999px; font-size:0; gap:0}
+  body.lay-b #playAllBtn .pa-ext{display:none}
+  body.lay-b #playHome{display:contents}
+  body.lay-b .acts{margin-top:10px}
+  body.lay-b .btn.ico{width:42px; height:38px; border-radius:10px}
+  body.lay-b .btn.ico svg{width:18px; height:18px}
+  body.lay-b .view-grid-m{grid-template-columns:repeat(auto-fill, minmax(min(100%,120px),1fr)); gap:12px 8px}
+  body.lay-b .view-grid-m .title{font-size:13px}
+  body.lay-b .view-grid-l{grid-template-columns:repeat(auto-fill, minmax(min(100%,200px),1fr))}
+
+  /* C · Barra inferior */
+  body.lay-c .hdr-search{display:block; flex:1; min-width:0; margin:0 4px}
+  body.lay-c .hdr-search .searchbox input{border-radius:999px; min-height:40px}
+  body.lay-c .layout{display:block}
+  body.lay-c .side{margin-bottom:10px}
+  body.lay-c .side-title{display:none}
+  body.lay-c .tabs{flex-direction:row; overflow-x:auto; scrollbar-width:none; gap:6px; padding-bottom:2px}
+  body.lay-c .tabs::-webkit-scrollbar{display:none}
+  body.lay-c .tab{width:auto; flex:none; border-radius:999px; padding:7px 13px; font-size:14px}
+  body.lay-c .tab .name{flex:none}
+  body.lay-c #titleRow{margin-top:2px}
+  body.lay-c #listName{font-size:21px}
+  body.lay-c #listMeta{margin:0 2px 4px}
+  body.lay-c .acts{margin-top:0}
+  body.lay-c .actrow{display:none}
+  body.lay-c #toolbar{justify-content:flex-end}
+  body.lay-c .sel{max-width:none; width:auto}
+  body.lay-c .selwrap select{border:0; background:transparent; padding:6px 22px 6px 28px; font-size:13px}
+  body.lay-c #playAllBtn{position:fixed; right:14px; bottom:calc(84px + env(safe-area-inset-bottom,0px)); z-index:35; height:48px;
+                         border-radius:999px; padding:0 18px; box-shadow:0 8px 22px color-mix(in srgb, var(--accent) 40%, transparent)}
+  body.lay-c #playAllBtn .pa-ext{display:none}
+  body.lay-c .bottombar{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); position:fixed; left:0; right:0; bottom:0; z-index:36;
+                        padding:6px 6px calc(8px + env(safe-area-inset-bottom,0px)); background:var(--surface); border-top:1.5px solid var(--line)}
+  body.lay-c .bottombar button{display:flex; flex-direction:column; align-items:center; gap:3px; min-height:52px; justify-content:center; border:0; border-radius:10px;
+                               background:transparent; color:var(--ink); font:600 10.5px Figtree,system-ui,sans-serif; letter-spacing:-.2px; cursor:pointer; min-width:0; overflow:hidden; white-space:nowrap}
+  body.lay-c .bottombar button:hover{background:color-mix(in srgb, var(--accent) 8%, transparent)}
+  body.lay-c .bottombar .bb-accent{color:var(--accent)}
+  body.lay-c .bottombar button[aria-pressed="true"], body.lay-c .bottombar button[aria-expanded="true"]{color:var(--accent); background:color-mix(in srgb, var(--accent) 10%, transparent)}
+  body.lay-c .pb-24{padding-bottom:170px}
+  body.lay-c #toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  body.lay-c.selecting .bottombar, body.lay-c.selecting #playAllBtn{display:none}
+  body.lay-c.selecting #toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+
+  /* Buscador */
+  .searchbox{position:relative; flex:1 1 100%}
+  .searchbox > svg{position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none}
+  .searchbox input{padding-left:42px; padding-right:46px; min-height:48px; resize:none}
+  .searchbox input::-webkit-search-cancel-button{display:none}
+  #searchClear{position:absolute; right:5px; top:50%; transform:translateY(-50%); width:38px; height:38px; border:0; background:none; color:var(--muted);
+               border-radius:8px; cursor:pointer; display:grid; place-items:center}
+  #searchClear:hover{color:var(--ink); background:var(--line)}
+
+  /* Tarjetas de vídeo: base */
+  .cards{display:grid; gap:16px; list-style:none; padding:0; margin:0}
+  .card{position:relative; min-width:0}
+  .card .play{display:flex; flex-direction:column; gap:8px; width:100%; text-align:left; background:none; border:0; padding:0; color:inherit; cursor:pointer; border-radius:12px}
+  .thumb{position:relative; display:block; width:100%; aspect-ratio:16/9; border-radius:12px; overflow:hidden; background:var(--line);
+         outline:3px solid transparent; outline-offset:2px; transition:outline-color .15s}
+  .thumb img{width:100%; height:100%; object-fit:cover; display:block}
+  .card .play:hover .thumb{outline-color:var(--line)}
+  .pos,.dur{position:absolute; bottom:8px; font:700 12px/1 Figtree,sans-serif; padding:4px 7px; border-radius:6px; background:rgba(10,14,24,.8); color:#fff}
+  .pos{left:8px} .dur{right:8px; font-variant-numeric:tabular-nums}
+  .info{display:flex; flex-direction:column; gap:3px; min-width:0; padding-right:4px}
+  .title{font-weight:600; font-size:14.5px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .title.pending{color:var(--muted); font-weight:500; font-style:italic}
+  .meta{font-size:13px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .card.is-off .thumb img{filter:grayscale(1); opacity:.5}
+  .remove{position:absolute; top:7px; right:7px; width:32px; height:32px; display:grid; place-items:center; border-radius:50%;
+          border:0; cursor:pointer; background:rgba(10,14,24,.72); color:#fff}
+  .remove:hover{background:var(--danger)}
+  .badge{display:none; position:absolute; left:8px; top:8px; align-items:center; gap:6px; padding:5px 9px 5px 8px; border-radius:999px;
+         background:var(--live); color:#1A1400; font:700 12px/1 Figtree,sans-serif}
+  .card.is-now .thumb{outline-color:var(--live)}
+  .card.is-now .badge{display:inline-flex}
+  .card.is-now .pos{display:none}
+  .cpos,.cdur{display:none}
+  .eq{display:inline-flex; gap:2px; align-items:flex-end; height:11px}
+  .eq i{width:3px; background:currentColor; border-radius:1px; animation:eq 0.9s ease-in-out infinite}
+  .eq i:nth-child(2){animation-delay:-.3s} .eq i:nth-child(3){animation-delay:-.6s}
+  @keyframes eq{0%,100%{height:3px}50%{height:11px}}
+  @media (prefers-reduced-motion: reduce){ .eq i{animation:none; height:8px} }
+
+  /* Vistas: cuadrículas */
+  .view-grid-l{grid-template-columns:repeat(auto-fill, minmax(min(100%,270px),1fr)); gap:24px}
+  .view-grid-l .title{font-size:16.5px}
+  .view-grid-m{grid-template-columns:repeat(auto-fill, minmax(min(100%,160px),1fr))}
+  .view-grid-s{grid-template-columns:repeat(auto-fill, minmax(min(100%,100px),1fr)); gap:12px}
+  .view-grid-s .title{font-size:13px} .view-grid-s .meta{display:none}
+  .view-grid-s .remove{width:26px; height:26px; top:5px; right:5px}
+  .view-grid-s .badge{font-size:0; gap:0; padding:5px 7px}
+  .view-grid-s .dur,.view-grid-s .pos{font-size:11px; bottom:5px; padding:3px 5px}
+  .view-grid-s .pos{left:5px} .view-grid-s .dur{right:5px}
+  /* Mosaico: solo miniaturas */
+  .view-mosaic{grid-template-columns:repeat(auto-fill, minmax(min(100%,76px),1fr)); gap:6px}
+  .view-mosaic .info,.view-mosaic .pos{display:none}
+  .view-mosaic .dur{font-size:10.5px; padding:2px 4px; right:3px; bottom:3px; border-radius:4px}
+  .view-mosaic .thumb{border-radius:6px; outline-width:3px; outline-offset:1px}
+  .view-mosaic .remove{width:24px; height:24px; top:4px; right:4px}
+  .view-mosaic .remove svg{width:12px; height:12px}
+  .view-mosaic .badge{font-size:0; gap:0; padding:4px 6px; left:4px; top:auto; bottom:4px}
+  /* Vistas: listas con miniatura */
+  .view-list-l,.view-list-m{grid-template-columns:1fr; gap:12px}
+  .view-list-l .play,.view-list-m .play{flex-direction:row; align-items:center; gap:14px; padding-right:46px}
+  .view-list-l .thumb{width:min(44%,320px); flex:none}
+  .view-list-l .title{font-size:17px}
+  .view-list-m .thumb{width:min(38%,168px); flex:none; border-radius:9px}
+  .view-list-l .remove,.view-list-m .remove,.view-compact .remove{top:50%; transform:translateY(-50%); right:4px; background:transparent; color:var(--muted)}
+  .view-list-l .remove:hover,.view-list-m .remove:hover,.view-compact .remove:hover{background:var(--danger); color:#fff}
+  .view-list-m .badge{font-size:0; gap:0; padding:5px 7px}
+  /* Lista compacta: solo texto */
+  .view-compact{grid-template-columns:1fr; gap:0; background:var(--surface); border:1.5px solid var(--line); border-radius:14px; overflow:hidden}
+  .view-compact .card + .card{border-top:1px solid var(--line)}
+  .view-compact .thumb{display:none}
+  .view-compact .play{flex-direction:row; align-items:center; gap:10px; padding:11px 48px 11px 6px; border-radius:0}
+  .view-compact .play:hover{background:color-mix(in srgb, var(--accent) 7%, transparent)}
+  .view-compact .title{-webkit-line-clamp:1}
+  .view-compact .cpos{display:inline-flex; justify-content:center; width:30px; flex:none; color:var(--muted); font-weight:700; font-size:13px; font-variant-numeric:tabular-nums}
+  .view-compact .cdur{display:block; margin-left:auto; flex:none; color:var(--muted); font-size:13px; font-variant-numeric:tabular-nums}
+  .view-compact .card.is-now{background:color-mix(in srgb, var(--live) 16%, transparent)}
+  .view-compact .card.is-now .cpos{color:var(--ink)}
+
+
+  .menu-wrap{position:relative}
+  .menu{position:absolute; right:0; top:calc(100% + 6px); z-index:45; min-width:250px; padding:6px; border-radius:14px;
+        background:var(--surface); border:1.5px solid var(--line); box-shadow:0 14px 40px rgba(0,0,0,.18)}
+  .menu-item{display:flex; width:100%; align-items:center; gap:12px; padding:12px 12px; border:0; border-radius:9px; background:none;
+             color:var(--ink); font:600 15px Figtree,system-ui,sans-serif; text-align:left; cursor:pointer}
+  .menu-item:hover,.menu-item:focus-visible{background:color-mix(in srgb, var(--accent) 10%, transparent); outline:none}
+  .menu-item svg{color:var(--muted); flex:none}
+  #moreBtn[aria-expanded="true"]{border-color:var(--line); color:var(--ink); background:var(--surface)}
+  .actrow{display:flex; flex-wrap:nowrap; gap:8px}
+  .btn.ico{width:46px; height:46px; padding:0; border-radius:12px; flex:none}
+  .btn.accent-outline{border-color:var(--accent); color:var(--accent)}
+  .btn.accent-outline[aria-expanded="true"]{background:var(--accent); color:var(--accent-ink)}
+  .btn.sm{padding:8px 10px; font-size:14px; gap:5px; white-space:nowrap; border-radius:9px}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:10px 16px; border-radius:10px; font-weight:600; font-size:15px;
+       border:1.5px solid var(--line); background:var(--surface); color:var(--ink); cursor:pointer}
+  .btn:hover:not(:disabled){border-color:var(--ink)}
+  .btn:disabled{opacity:.45; cursor:not-allowed}
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+  .btn.primary:hover:not(:disabled){filter:brightness(1.08); border-color:var(--accent)}
+  .btn.ghost{border-color:transparent; background:transparent; color:var(--muted)}
+  .btn.ghost:hover:not(:disabled){color:var(--ink); border-color:var(--line)}
+  .btn.danger:hover:not(:disabled){color:var(--danger); border-color:var(--danger)}
+  .icon-btn{width:44px; height:44px; padding:0}
+  .btn[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+
+  .field{width:100%; border:1.5px solid var(--line); background:var(--surface); color:var(--ink); border-radius:10px; padding:11px 13px; font-size:15px; resize:vertical; min-height:48px}
+  .field::placeholder{color:var(--muted)}
+  .field:focus{outline:none; border-color:var(--accent)}
+
+  dialog.kd{border:0; border-radius:18px; padding:0; background:var(--surface); color:var(--ink); width:min(580px, calc(100% - 24px)); max-height:calc(100% - 24px)}
+  .linkrow{display:flex; align-items:center; gap:6px; border:1.5px solid var(--line); border-radius:12px; padding:4px 4px 4px 0}
+  .linkrow:hover{border-color:var(--accent)}
+  .linkopen{flex:1; min-width:0; display:flex; align-items:center; gap:12px; padding:8px 4px 8px 10px; color:inherit; text-decoration:none; border-radius:10px}
+  .lk-ico{flex:none; width:38px; height:38px; border-radius:10px; display:grid; place-items:center; background:var(--accent); color:var(--accent-ink);
+          font:800 17px "Bricolage Grotesque",system-ui,sans-serif; text-transform:uppercase}
+  .lk-text{min-width:0; display:flex; flex-direction:column}
+  .lk-name{font-weight:600; font-size:15.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .lk-host{font-size:13px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .lk-ext{flex:none; color:var(--muted); margin-left:auto}
+  .lk-del{flex:none; width:40px; height:40px; display:grid; place-items:center; border:0; border-radius:10px; background:transparent; color:var(--muted); cursor:pointer}
+  .lk-del:hover{background:var(--danger); color:#fff}
+  dialog.kd::backdrop{background:rgba(8,12,20,.55)}
+  /* Menú de pulsación larga */
+  .card .play{-webkit-touch-callout:none; -webkit-user-select:none; user-select:none}
+  .card .play .thumb{transition:transform .2s, outline-color .15s}
+  .card .play.pressing .thumb{transform:scale(.96)}
+  .view-compact .card .play.pressing{background:color-mix(in srgb, var(--accent) 10%, transparent)}
+  dialog.sheet{border:0; padding:0; margin:auto auto 0; width:min(520px,100%); max-width:100%; max-height:85vh;
+               border-radius:20px 20px 0 0; background:var(--surface); color:var(--ink);
+               padding-bottom:env(safe-area-inset-bottom,0px)}
+  dialog.sheet::backdrop{background:rgba(8,12,20,.55)}
+  @media (min-width:640px){ dialog.sheet{margin:auto; border-radius:20px} }
+  .sheet .grab{width:42px; height:5px; border-radius:3px; background:var(--line); margin:10px auto 4px}
+  .sheet .cm-head{display:flex; align-items:center; gap:12px; padding:10px 16px 12px; border-bottom:1px solid var(--line)}
+  .sheet .cm-head img{width:96px; aspect-ratio:16/9; object-fit:cover; border-radius:8px; flex:none; background:var(--line)}
+  .sheet .cm-title{font-weight:600; font-size:15px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .sheet .cm-body{padding:8px; overflow-y:auto; max-height:55vh}
+  .sheet .menu-item .count{margin-left:auto; color:var(--muted); font-size:13px; font-weight:700}
+
+    #toast{position:fixed; left:50%; bottom:calc(16px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); z-index:50;
+         width:min(560px, calc(100% - 24px))}
+  .toast{display:flex; align-items:center; gap:14px; background:var(--ink); color:var(--bg); padding:12px 14px 12px 16px; border-radius:12px;
+         box-shadow:0 10px 30px rgba(0,0,0,.25); font-size:14.5px}
+  .toast span{flex:1; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical}
+  .toast button{flex:none; background:none; border:0; color:var(--live); font-weight:700; cursor:pointer; padding:6px 8px}
+</style>
+</head>
+<body class="min-h-screen">
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-24">
+
+  <header id="appHeader" class="flex flex-wrap items-end justify-between gap-4 pt-6 sm:pt-10 pb-5">
+    <div>
+      <h1 id="appTitle" class="font-display font-extrabold text-[40px] sm:text-[56px] leading-[0.95] tracking-tight">Videoteca</h1>
+    </div>
+    <div id="hdrSearchSlot" class="hdr-search"></div>
+    <div id="hdrBtns" class="flex flex-wrap gap-1">
+      <button class="btn ghost icon-btn" id="settingsBtn" type="button" aria-label="Ajustes" title="Ajustes">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+      <button class="btn ghost hbtn" id="linksBtn" aria-label="Enlaces para extraer vídeos" title="Enlaces para extraer vídeos de YouTube">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+        <span class="lbl">Enlaces</span>
+      </button>
+      <div class="menu-wrap">
+        <button class="btn ghost hbtn" id="moreBtn" type="button" aria-label="Más opciones" aria-haspopup="menu" aria-expanded="false" aria-controls="moreMenu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+          <span class="lbl">Más opciones</span>
+        </button>
+        <div class="menu" id="moreMenu" role="menu" aria-labelledby="moreBtn" hidden>
+          <button class="menu-item" role="menuitem" id="keyBtn" title="Clave de YouTube para ver duración, visualizaciones y fecha">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/></svg>
+            <span id="keyBtnText">Clave de YouTube</span>
+          </button>
+          <button class="menu-item" role="menuitem" id="exportBtn" title="Descargar una copia de todas las listas">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
+            Exportar
+          </button>
+          <button class="menu-item" role="menuitem" id="importBtn" title="Añadir listas desde una copia">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m0 0L7 8m5-5 5 5M4 19h16"/></svg>
+            Importar
+          </button>
+          <button class="menu-item" role="menuitem" id="installBtn" type="button" hidden>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M12 7v8M9 12l3 3 3-3"/></svg>
+            Instalar app
+          </button>
+        </div>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+  </header>
+
+  <div class="layout">
+  <aside class="side" aria-labelledby="sideTitle">
+    <p id="sideTitle" class="side-title">Listas</p>
+    <nav class="tabs" id="tabs" role="tablist" aria-orientation="vertical" aria-label="Listas"></nav>
+  </aside>
+
+  <main id="main">
+    <!-- Lista activa -->
+    <section id="listSection" aria-labelledby="listName">
+      <div class="listhead" id="listHead">
+        <div class="pickrow" id="pickRow">
+          <button class="picker" id="listPicker" type="button" aria-haspopup="dialog" aria-label="Cambiar de lista">
+            <span class="pk-name" id="pkName"></span>
+            <span class="pk-count" id="pkCount"></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+        </div>
+        <div class="titlerow" id="titleRow">
+          <h2 id="listName" class="font-display font-extrabold text-3xl sm:text-4xl leading-none tracking-tight break-words"></h2>
+        </div>
+        <p id="listMeta" class="text-muted text-sm mt-2"></p>
+        <div class="acts" id="actsBox">
+          <div id="playHome">
+            <button class="btn primary" id="playAllBtn" title="Se abre en YouTube, en una pestaña nueva">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>
+            Reproducir lista
+            <svg class="pa-ext" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+            <span class="sr-only">(se abre en una pestaña nueva)</span>
+          </button>
+          </div>
+          <div class="actrow" role="toolbar" aria-label="Acciones de la lista">
+            <button class="btn ico accent-outline" id="addToggle" type="button" aria-expanded="false" aria-controls="addForm" aria-label="Añadir links" title="Añadir links">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 14.5l5-5"/><path d="M11 6.5l1.3-1.3a4 4 0 0 1 5.6 5.6L16.5 12"/><path d="M13 17.5l-1.3 1.3a4 4 0 0 1-5.6-5.6L7.5 12"/><path d="M19 16v6M16 19h6"/></svg>
+            </button>
+            <button class="btn ico" id="selectBtn" type="button" aria-pressed="false" aria-label="Seleccionar vídeos" title="Seleccionar vídeos">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12l3 3 5-6"/></svg>
+            </button>
+            <button class="btn ico" id="renameBtn" type="button" aria-label="Renombrar lista" title="Renombrar lista">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>
+            </button>
+            <button class="btn ico" id="catBtn" type="button" aria-label="Categoría de la lista" title="Categoría de la lista">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            </button>
+            <button class="btn ico danger" id="deleteListBtn" type="button" aria-label="Eliminar lista" title="Eliminar lista">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <form id="addForm" class="flex flex-col sm:flex-row gap-2 mb-2" autocomplete="off" hidden>
+        <label for="addInput" class="sr-only">Enlaces de YouTube</label>
+        <textarea id="addInput" class="field flex-1" rows="1"
+          placeholder="Pega enlaces de vídeos o de listas de YouTube (uno por línea)"></textarea>
+        <button class="btn primary sm:self-start" type="submit" id="addBtn" style="min-height:48px">Añadir a la lista</button>
+      </form>
+      <p id="addMsg" class="text-sm text-muted min-h-[22px] mb-3" aria-live="polite"></p>
+
+      <div id="toolbar" class="flex flex-wrap gap-2 mb-5">
+        <div class="menu-wrap act-menu-wrap" id="actMenuWrap">
+          <button class="btn ico accent-outline sm-ico" id="actMenuBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="actMenu" aria-label="Acciones de la lista" title="Acciones de la lista">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <div class="menu" id="actMenu" role="menu" aria-labelledby="actMenuBtn" hidden>
+            <button class="menu-item" role="menuitem" type="button" data-proxy="addToggle">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 14.5l5-5"/><path d="M11 6.5l1.3-1.3a4 4 0 0 1 5.6 5.6L16.5 12"/><path d="M13 17.5l-1.3 1.3a4 4 0 0 1-5.6-5.6L7.5 12"/></svg>
+              Añadir links
+            </button>
+            <button class="menu-item" role="menuitem" type="button" data-proxy="selectBtn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12l3 3 5-6"/></svg>
+              Seleccionar vídeos
+            </button>
+            <button class="menu-item" role="menuitem" type="button" data-proxy="renameBtn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4z"/></svg>
+              Renombrar lista
+            </button>
+            <button class="menu-item" role="menuitem" type="button" data-proxy="catBtn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              Categoría de la lista
+            </button>
+            <button class="menu-item" role="menuitem" type="button" data-proxy="deleteListBtn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+              Eliminar lista
+            </button>
+          </div>
+        </div>
+        <div class="searchbox">
+          <label for="searchInput" class="sr-only">Buscar vídeos por palabras</label>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+          <input id="searchInput" type="search" class="field" autocomplete="off" spellcheck="false" placeholder="Buscar por palabras del título o del canal">
+          <button id="searchClear" type="button" aria-label="Borrar la búsqueda" title="Borrar la búsqueda" hidden>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <label class="sel" title="Vista"><span class="sr-only">Vista</span>
+          <span class="selwrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            <select id="viewSel">
+              <optgroup label="Cuadrícula">
+                <option value="grid-l">Cuadrícula grande</option>
+                <option value="grid-m">Cuadrícula mediana</option>
+                <option value="grid-s">Cuadrícula pequeña</option>
+              </optgroup>
+              <optgroup label="Lista">
+                <option value="list-l">Lista grande</option>
+                <option value="list-m">Lista mediana</option>
+                <option value="compact">Lista compacta (solo texto)</option>
+              </optgroup>
+              <optgroup label="Otras">
+                <option value="mosaic">Mosaico (solo miniaturas)</option>
+              </optgroup>
+            </select>
+          </span>
+        </label>
+        <label class="sel" title="Ordenar por"><span class="sr-only">Ordenar por</span>
+          <span class="selwrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg>
+            <select id="sortSel">
+              <optgroup label="Orden">
+                <option value="added">Orden en que los añadiste</option>
+                <option value="added-desc">Últimos añadidos primero</option>
+                <option value="title">Título (A–Z)</option>
+                <option value="channel">Canal (A–Z)</option>
+              </optgroup>
+              <optgroup label="Datos de YouTube" id="apiGroup">
+                <option value="pub-desc">Publicación: más recientes</option>
+                <option value="pub-asc">Publicación: más antiguos</option>
+                <option value="views-desc">Más vistos</option>
+                <option value="views-asc">Menos vistos</option>
+                <option value="dur-asc">Duración: más cortos</option>
+                <option value="dur-desc">Duración: más largos</option>
+              </optgroup>
+            </select>
+          </span>
+        </label>
+      </div>
+
+      <div id="emptyList" class="rounded-2xl border-2 border-dashed border-line p-8 text-center text-muted" hidden>
+        <p class="font-semibold text-ink text-lg">Esta lista está vacía</p>
+        <p class="mt-1">Copia el enlace de un vídeo o de una lista de YouTube (botón Compartir) y pégalo en el recuadro de arriba (botón de enlace con +).</p>
+      </div>
+
+      <div id="dataHint" class="mb-4 rounded-xl p-3 text-[14px] leading-relaxed" style="border:2px solid var(--live); background:color-mix(in srgb, var(--live) 10%, var(--surface))" hidden>
+        <p id="dataHintText"></p>
+        <button type="button" id="dataHintBtn" class="btn sm mt-2">Cargar datos ahora</button>
+      </div>
+      <p id="durHint" class="text-sm text-muted mb-4" hidden>Para ver la duración de los vídeos, <button type="button" id="durHintBtn" class="font-semibold text-ink underline underline-offset-2">añade la clave de YouTube</button>.</p>
+
+      <div id="noResults" class="rounded-2xl border-2 border-dashed border-line p-8 text-center text-muted" hidden>
+        <p class="font-semibold text-ink text-lg">Ningún vídeo contiene esas palabras</p>
+        <p class="mt-1">Prueba con menos palabras o con otras. <button type="button" id="noResultsClear" class="font-semibold text-ink underline underline-offset-2">Borrar la búsqueda</button></p>
+      </div>
+
+      <ol class="cards view-grid-m" id="cards"></ol>
+      <div id="allSections" hidden></div>
+    </section>
+
+    <section id="noLists" hidden class="rounded-2xl border-2 border-dashed border-line p-10 text-center">
+      <p class="font-display font-semibold text-2xl">No tienes ninguna lista</p>
+      <p class="text-muted mt-2 mb-5">Crea una para cada tipo de vídeo: música, recetas, tutoriales…</p>
+      <button class="btn primary" id="firstListBtn">Crear lista</button>
+    </section>
+  </main>
+  </div>
+</div>
+
+<dialog id="keyDialog" class="kd" aria-labelledby="keyTitle">
+  <form method="dialog" class="p-6 sm:p-7">
+    <h2 id="keyTitle" class="font-display font-extrabold text-2xl leading-tight">Clave de YouTube</h2>
+    <p id="keyReason" class="mt-3 rounded-xl p-3 text-[14.5px] font-semibold" style="border:2px solid var(--live); background:color-mix(in srgb, var(--live) 10%, var(--surface))" hidden>Para ordenar por fecha de publicación, visualizaciones o duración hace falta esta clave.</p>
+    <p id="keyStatus" class="mt-3 text-[14.5px]" hidden></p>
+    <p class="mt-3 text-[15px] leading-relaxed">Con una clave gratuita de la API de YouTube, la app muestra la <b>duración</b>, las <b>visualizaciones</b> y la <b>fecha de publicación</b> de cada vídeo, y puede ordenar por esos datos.</p>
+    <ol class="list-decimal pl-5 mt-3 space-y-1.5 text-[14.5px] text-muted leading-relaxed">
+      <li>Entra en <b class="text-ink">console.cloud.google.com</b> con tu cuenta de Google y crea un proyecto.</li>
+      <li>En «APIs y servicios» → «Biblioteca», busca <b class="text-ink">YouTube Data API v3</b> y pulsa Habilitar.</li>
+      <li>En «Credenciales» → «Crear credenciales» → «Clave de API», copia la clave.</li>
+      <li>Recomendado: en la clave, limita los sitios web a la dirección de tu app (por ejemplo, https://TU-USUARIO.github.io/*).</li>
+    </ol>
+    <label class="block mt-5 text-sm font-semibold text-muted" for="keyInput">Clave</label>
+    <input id="keyInput" class="field mt-1.5" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="AIza…">
+    <p class="text-sm text-muted mt-2">Se guarda solo en este navegador y no se incluye al exportar.</p>
+    <div class="flex flex-wrap justify-end gap-2 mt-6">
+      <button class="btn ghost danger mr-auto" value="clear" id="keyClear">Borrar clave</button>
+      <button class="btn" value="cancel">Cancelar</button>
+      <button class="btn primary" value="save">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="linksDialog" class="kd" aria-labelledby="linksTitle">
+  <div class="p-6 sm:p-7">
+    <div class="flex items-start justify-between gap-3">
+      <h2 id="linksTitle" class="font-display font-extrabold text-2xl leading-tight">Enlaces para extraer vídeos</h2>
+      <button class="btn ghost icon-btn -mt-2 -mr-2" id="linksClose" type="button" aria-label="Cerrar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <p class="text-muted mt-2 text-[15px] leading-relaxed">Webs que sacan los enlaces de los vídeos de una lista de YouTube. Copia los enlaces que te den y pégalos todos juntos en «Añadir a la lista». Se abren en una pestaña nueva.</p>
+    <div class="mt-4 rounded-xl p-4 text-[14.5px] leading-relaxed" style="border:2px solid var(--live); background:color-mix(in srgb, var(--live) 10%, var(--surface))">
+      <p class="font-semibold">Para usar tus propias listas de YouTube</p>
+      <p class="text-muted mt-1">Pon la lista como <b class="text-ink">Pública</b>, no como Privada: si es privada, YouTube no deja leerla, ni a estas webs ni a la Videoteca. En la app de YouTube: Tú → Listas → abre la lista → lápiz (Editar) → Privacidad → <b class="text-ink">Pública</b>.</p>
+    </div>
+    <ul id="linksList" class="mt-4 flex flex-col gap-2" role="list"></ul>
+    <p id="linksEmpty" class="mt-4 text-muted text-[15px]" hidden>No tienes enlaces guardados.</p>
+    <form id="linkForm" class="mt-6 pt-5 border-t border-line flex flex-col gap-2" autocomplete="off">
+      <p class="text-sm font-semibold text-muted">Añadir un enlace</p>
+      <label class="sr-only" for="linkName">Nombre</label>
+      <input id="linkName" class="field" placeholder="Nombre (opcional)">
+      <label class="sr-only" for="linkUrl">Dirección</label>
+      <input id="linkUrl" class="field" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://…">
+      <div class="flex items-center gap-3 flex-wrap">
+        <button class="btn primary" type="submit">Añadir enlace</button>
+        <p id="linkMsg" class="text-sm text-muted" aria-live="polite"></p>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<dialog id="settingsDialog" class="kd" aria-labelledby="settingsTitle">
+  <div class="p-6 sm:p-7">
+    <div class="flex items-start justify-between gap-3">
+      <h2 id="settingsTitle" class="font-display font-extrabold text-2xl leading-tight">Ajustes</h2>
+      <button class="btn ghost icon-btn -mt-2 -mr-2" id="settingsClose" type="button" aria-label="Cerrar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <fieldset class="mt-5">
+      <legend class="font-semibold text-[15.5px] mb-2">Diseño de la app</legend>
+      <div class="flex flex-col gap-2" id="layoutOpts">
+        <label class="lay-opt"><input type="radio" name="layout" value="classic"><span><b>Clásico</b><small>Listas en columna y botones grandes.</small></span></label>
+        <label class="lay-opt"><input type="radio" name="layout" value="a"><span><b>A · Selector desplegable</b><small>Las listas se eligen en un botón desplegable; vídeos en filas compactas.</small></span></label>
+        <label class="lay-opt"><input type="radio" name="layout" value="b"><span><b>B · Raíl de listas</b><small>Columna estrecha de listas a la izquierda y cuadrícula de dos columnas.</small></span></label>
+        <label class="lay-opt"><input type="radio" name="layout" value="c"><span><b>C · Barra inferior</b><small>Listas en una fila deslizable y acciones en una barra abajo.</small></span></label>
+      </div>
+    </fieldset>
+    <section class="mt-5" aria-labelledby="catAdminTitle">
+      <p id="catAdminTitle" class="font-semibold text-[15.5px] mb-2">Categorías</p>
+      <p class="text-muted text-[13.5px] mb-2 leading-relaxed">Agrupan tus listas. Para meter una lista en una categoría, ábrela y pulsa el icono de carpeta. Mantén pulsada una lista o categoría en el selector para renombrarla, eliminarla o cambiar su orden.</p>
+      <div id="catAdmin" class="flex flex-col gap-2"></div>
+      <button class="btn mt-2" type="button" id="catAdd">+ Nueva categoría</button>
+    </section>
+    <label class="mt-5 flex items-start gap-3 rounded-xl p-4 cursor-pointer" style="border:1.5px solid var(--line)">
+      <input type="checkbox" id="optNoDup" class="mt-0.5 flex-none" style="width:22px;height:22px;accent-color:var(--accent)">
+      <span>
+        <span class="block font-semibold text-[15.5px]">No añadir vídeos repetidos</span>
+        <span class="block text-muted text-[14px] mt-1 leading-relaxed">Si está marcada, al añadir o mover un vídeo a una lista donde ya existe, no se vuelve a añadir. Desmárcala si quieres poder tener el mismo vídeo varias veces en una lista.</span>
+      </span>
+    </label>
+  </div>
+</dialog>
+
+<dialog id="listSheet" class="sheet" aria-labelledby="lsTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <p id="lsTitle" class="font-display font-extrabold text-xl px-5 pt-2 pb-1">Listas</p>
+  <div class="cm-body" id="listSheetItems"></div>
+  <div class="px-2 pb-3"><button class="btn w-full" type="button" id="lsCancel">Cancelar</button></div>
+</dialog>
+
+<nav id="bottomBar" class="bottombar" aria-label="Acciones de la lista">
+  <button type="button" data-proxy="addToggle" class="bb-accent">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 14.5l5-5"/><path d="M11 6.5l1.3-1.3a4 4 0 0 1 5.6 5.6L16.5 12"/><path d="M13 17.5l-1.3 1.3a4 4 0 0 1-5.6-5.6L7.5 12"/></svg>
+    Añadir
+  </button>
+  <button type="button" data-proxy="selectBtn">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12l3 3 5-6"/></svg>
+    Seleccionar
+  </button>
+  <button type="button" data-proxy="renameBtn">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4z"/></svg>
+    Renombrar
+  </button>
+  <button type="button" data-proxy="catBtn">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    Categoría
+  </button>
+  <button type="button" data-proxy="deleteListBtn">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+    Eliminar
+  </button>
+  <button type="button" data-proxy="linksBtn">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+    Enlaces
+  </button>
+</nav>
+
+<dialog id="moveSheet" class="sheet" aria-labelledby="msTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <p id="msTitle" class="font-display font-extrabold text-xl px-5 pt-2 pb-1"></p>
+  <div class="cm-body" id="moveSheetItems"></div>
+  <div class="px-2 pb-3"><button class="btn w-full" type="button" id="msCancel">Cancelar</button></div>
+</dialog>
+
+<dialog id="catSheet" class="sheet" aria-labelledby="csTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <p id="csTitle" class="font-display font-extrabold text-xl px-5 pt-2 pb-1"></p>
+  <div class="cm-body" id="catSheetItems"></div>
+  <div class="px-2 pb-3"><button class="btn w-full" type="button" id="csCancel">Cancelar</button></div>
+</dialog>
+
+<dialog id="itemMenu" class="sheet" aria-labelledby="imTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="cm-head"><span id="imIcon" class="fico" style="color:var(--muted);display:inline-flex"></span><p id="imTitle" class="cm-title"></p></div>
+  <div class="cm-body">
+    <button class="menu-item" type="button" id="imRename"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4z"/></svg>Renombrar</button>
+    <button class="menu-item" type="button" id="imUp"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Subir</button>
+    <button class="menu-item" type="button" id="imDown"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>Bajar</button>
+    <button class="menu-item" type="button" id="imCat"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Cambiar de categoría</button>
+    <button class="menu-item" type="button" id="imDelete" style="color:var(--danger)"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Eliminar</button>
+    <button class="btn w-full mt-2" type="button" id="imCancel">Cerrar</button>
+  </div>
+</dialog>
+
+<dialog id="shareSheet" class="sheet" aria-labelledby="ssTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <p id="ssTitle" class="font-display font-extrabold text-xl px-5 pt-2">¿A qué lista lo añado?</p>
+  <p id="ssWhat" class="text-muted text-[13.5px] px-5 pb-2" style="overflow-wrap:anywhere"></p>
+  <div class="cm-body" id="shareSheetItems"></div>
+  <div class="px-2 pb-3"><button class="btn w-full" type="button" id="ssCancel">Cancelar</button></div>
+</dialog>
+
+<dialog id="cardMenu" class="sheet" aria-labelledby="cmTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="cm-head">
+    <img id="cmThumb" alt="">
+    <p id="cmTitle" class="cm-title"></p>
+  </div>
+  <div class="cm-body">
+    <div id="cmMain">
+      <button class="menu-item" type="button" id="cmMove">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11M10 3l4 4-4 4"/><path d="M21 17H10M14 13l-4 4 4 4"/></svg>
+        Mover a otra lista
+      </button>
+      <button class="menu-item" type="button" id="cmSelect">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12l3 3 5-6"/></svg>
+        Seleccionar
+      </button>
+    </div>
+    <div id="cmLists" hidden>
+      <button class="menu-item" type="button" id="cmBack">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        <span class="text-muted">Mover a…</span>
+      </button>
+      <div id="cmListBtns"></div>
+      <button class="menu-item" type="button" id="cmNew">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Nueva lista…
+      </button>
+    </div>
+    <button class="btn w-full mt-2" type="button" id="cmCancel">Cancelar</button>
+  </div>
+</dialog>
+
+<div id="selBar" class="selbar" hidden role="region" aria-label="Vídeos seleccionados">
+  <span class="count" id="selCount" aria-live="polite">Toca los vídeos para seleccionarlos</span>
+  <button class="btn" type="button" id="selAll">Seleccionar todos</button>
+  <button class="btn" type="button" id="selMove" disabled>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11M10 3l4 4-4 4"/><path d="M21 17H10M14 13l-4 4 4 4"/></svg>
+    Mover
+  </button>
+  <button class="btn del" type="button" id="selDelete" disabled>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+    Eliminar
+  </button>
+  <button class="btn" type="button" id="selCancel">Cancelar</button>
+</div>
+
+<div id="toast" aria-live="polite"></div>
+
+<script>
+(() => {
+  const KEY = 'videoteca.v1';
+  const PENDING = 'Cargando título…';
+  const API_SORTS = ['pub-desc', 'pub-asc', 'views-desc', 'views-asc', 'dur-asc', 'dur-desc'];
+  const VIEWS = ['grid-l', 'grid-m', 'grid-s', 'list-l', 'list-m', 'compact', 'mosaic'];
+  const $ = s => document.querySelector(s);
+  const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const thumb = vid => `https://i.ytimg.com/vi/${vid}/mqdefault.jpg`;
+
+  /* ---------- Datos ---------- */
+  function load() {
+    let s = null;
+    try { s = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+    if (!s || !Array.isArray(s.lists)) {
+      const lists = ['Música', 'Tutoriales', 'Documentales'].map(name => ({ id: uid(), name, videos: [] }));
+      s = { lists, activeId: lists[0].id };
+    }
+    if (!VIEWS.includes(s.view)) s.view = 'grid-m';
+    if (!s.sort) s.sort = 'added';
+    if (typeof s.apiKey !== 'string') s.apiKey = '';
+    if (!Array.isArray(s.categories)) s.categories = [];
+    s.categories.forEach(c => { delete c.open; });
+    if (!s.settings || typeof s.settings !== 'object') s.settings = {};
+    if (typeof s.settings.noDup !== 'boolean') s.settings.noDup = true;
+    if (!['classic', 'a', 'b', 'c'].includes(s.settings.layout)) s.settings.layout = 'classic';
+    if (!Array.isArray(s.links)) s.links = [
+      { id: uid(), name: 'Extractor de vídeos de listas de YouTube', url: 'https://youtube-extractor-seven.vercel.app/' }
+    ];
+    if (!s.apiKey && API_SORTS.includes(s.sort)) s.sort = 'added';
+    return s;
+  }
+  let state = load();
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch (e) { toast('No se han podido guardar los cambios: este navegador no permite almacenamiento local.'); }
+  }
+  let saveTimer;
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { save(); render(); }, 200);
+  }
+  const ALL = '__all';
+  const getList = id => state.lists.find(l => l.id === id);
+  const isAll = () => state.activeId === ALL && state.lists.length > 0;
+  const active = () => isAll() ? null : (getList(state.activeId) || state.lists[0] || null);
+
+  /* ---------- Búsqueda por palabras ---------- */
+  let query = '';
+  const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const queryWords = () => norm(query).split(/\s+/).filter(Boolean);
+  function visible(l) {
+    const words = queryWords();
+    const arr = ordered(l);
+    if (!words.length) return arr;
+    return arr.filter(v => { const hay = norm(v.title + ' ' + (v.channel || '')); return words.every(w => hay.includes(w)); });
+  }
+
+  /* ---------- Orden ---------- */
+  function ordered(l) {
+    const arr = l.videos.slice();
+    const by = (get, dir, cmp) => arr.sort((a, b) => {
+      const x = get(a), y = get(b);
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      return (cmp ? cmp(x, y) : (x < y ? -1 : x > y ? 1 : 0)) * dir;
+    });
+    const text = (x, y) => x.localeCompare(y, 'es', { sensitivity: 'base', numeric: true });
+    switch (state.sort) {
+      case 'added-desc': arr.reverse(); break;
+      case 'title': by(v => v.titleOk ? v.title : null, 1, text); break;
+      case 'channel': by(v => v.channel || null, 1, text); break;
+      case 'pub-desc': by(v => v.published || null, -1); break;
+      case 'pub-asc': by(v => v.published || null, 1); break;
+      case 'views-desc': by(v => v.views ?? null, -1); break;
+      case 'views-asc': by(v => v.views ?? null, 1); break;
+      case 'dur-asc': by(v => v.duration || null, 1); break;
+      case 'dur-desc': by(v => v.duration || null, -1); break;
+    }
+    return arr;
+  }
+
+  /* ---------- Formatos ---------- */
+  const nf = new Intl.NumberFormat('es', { notation: 'compact', maximumFractionDigits: 1 });
+  const rtf = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });
+  function ago(iso) {
+    const diff = (new Date(iso) - Date.now()) / 1000;
+    for (const [u, s] of [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]]) {
+      if (Math.abs(diff) >= s) return rtf.format(Math.round(diff / s), u);
+    }
+    return 'ahora mismo';
+  }
+  function fmtDur(sec) {
+    sec = Math.round(sec);
+    const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+  }
+  function parseIsoDur(iso) {
+    const m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(iso || '');
+    if (!m) return null;
+    const sec = (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0);
+    return sec || null;
+  }
+  function metaText(v) {
+    if (v.unavailable) return 'No disponible en YouTube';
+    const parts = [];
+    if (v.channel) parts.push(v.channel);
+    if (v.views != null) parts.push(`${nf.format(v.views)} visualizaciones`);
+    if (v.published) parts.push(ago(v.published));
+    return parts.join(' · ');
+  }
+
+  /* ---------- Enlaces de YouTube ---------- */
+  function parseId(raw) {
+    const s = raw.trim();
+    if (/^[\w-]{11}$/.test(s)) return s;
+    try {
+      const u = new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s);
+      const host = u.hostname.replace(/^(www|m|music)\./, '');
+      const ok = id => (id && /^[\w-]{11}$/.test(id) ? id : null);
+      if (host === 'youtu.be') return ok(u.pathname.slice(1, 12));
+      if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
+        if (u.searchParams.get('v')) return ok(u.searchParams.get('v').slice(0, 11));
+        const m = u.pathname.match(/\/(?:embed|shorts|live|v)\/([\w-]{11})/);
+        if (m) return m[1];
+      }
+    } catch (e) {}
+    return null;
+  }
+  function parseInput(raw) {
+    const s = raw.trim();
+    if (/^(PL|UU|LL|FL|OL|RD)[\w-]{10,}$/.test(s)) return { type: 'playlist', id: s };
+    const vid = parseId(s);
+    try {
+      const u = new URL(/^https?:\/\//i.test(s) ? s : 'https://' + s);
+      const host = u.hostname.replace(/^(www|m|music)\./, '');
+      const list = u.searchParams.get('list');
+      if (host.endsWith('youtube.com') && ['WL', 'LL', 'LM'].includes(list) && !vid) return { type: 'private' };
+      if (host.endsWith('youtube.com') && list && /^[\w-]{10,}$/.test(list) && (u.pathname === '/playlist' || !vid)) {
+        return { type: 'playlist', id: list };
+      }
+    } catch (e) {}
+    return vid ? { type: 'video', vid } : null;
+  }
+
+  /* ---------- Títulos sin clave (noembed) ---------- */
+  async function fetchTitle(vid) {
+    try {
+      const url = 'https://noembed.com/embed?url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + vid);
+      const d = await (await fetch(url)).json();
+      if (d && d.title) return setTitle(vid, d.title, d.author_name);
+    } catch (e) {}
+    setTitle(vid, null);
+  }
+  function setTitle(vid, title, channel) {
+    let changed = false;
+    state.lists.forEach(l => l.videos.forEach(v => {
+      if (v.vid !== vid) return;
+      if (channel && !v.channel) { v.channel = channel; changed = true; }
+      if (v.titleOk) return;
+      if (title) { v.title = title; v.titleOk = true; changed = true; }
+      else if (v.title === PENDING) { v.title = `Vídeo de YouTube (${vid})`; changed = true; }
+    }));
+    if (changed) scheduleSave();
+  }
+  const titleQueue = []; let titleWorkers = 0;
+  function queueTitles(vids) {
+    vids.forEach(v => { if (!titleQueue.includes(v)) titleQueue.push(v); });
+    while (titleWorkers < 4 && titleQueue.length) {
+      titleWorkers++;
+      (async () => {
+        while (titleQueue.length) await fetchTitle(titleQueue.shift());
+        titleWorkers--;
+      })();
+    }
+  }
+
+  /* ---------- Datos con clave (YouTube Data API v3) ---------- */
+  let keyErrorShown = false, apiError = '';
+  function explainApiError(d, status) {
+    const t = JSON.stringify(d || {});
+    if (/API_KEY_INVALID|keyInvalid|API key not valid/i.test(t)) return 'la clave no es válida (comprueba que esté copiada entera)';
+    if (/SERVICE_DISABLED|accessNotConfigured|has not been used|is disabled/i.test(t)) return 'la «YouTube Data API v3» no está habilitada en tu proyecto de Google Cloud';
+    if (/API_KEY_SERVICE_BLOCKED/i.test(t)) return 'la clave está limitada a otras API: añade «YouTube Data API v3» en sus restricciones';
+    if (/REFERRER|referer/i.test(t)) return 'la clave tiene limitados los sitios web y no incluye la dirección de tu app';
+    if (/quotaExceeded|RATE_LIMIT|rateLimitExceeded/i.test(t)) return 'se ha agotado el límite diario gratuito; vuelve a probar mañana';
+    return (d && d.error && d.error.message) || ('error ' + status);
+  }
+  async function fetchDetails(vids) {
+    const key = state.apiKey;
+    const ids = [...new Set(vids)];
+    if (!key || !ids.length) return false;
+    for (let k = 0; k < ids.length; k += 50) {
+      const chunk = ids.slice(k, k + 50);
+      try {
+        const r = await fetch('https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&maxResults=50&id='
+          + chunk.join(',') + '&key=' + encodeURIComponent(key));
+        const d = await r.json();
+        if (!r.ok) {
+          apiError = explainApiError(d, r.status);
+          if (!keyErrorShown) { keyErrorShown = true; toast('YouTube no da los datos: ' + apiError + '.'); }
+          render();
+          return false;
+        }
+        const found = new Set();
+        (d.items || []).forEach(it => {
+          found.add(it.id);
+          applyDetails(it.id, {
+            title: it.snippet.title, channel: it.snippet.channelTitle, published: it.snippet.publishedAt,
+            views: it.statistics && it.statistics.viewCount != null ? Number(it.statistics.viewCount) : null,
+            duration: parseIsoDur(it.contentDetails && it.contentDetails.duration)
+          });
+        });
+        chunk.filter(id => !found.has(id)).forEach(id => applyDetails(id, { missing: true }));
+      } catch (e) {
+        apiError = 'no hay conexión con YouTube';
+        if (!keyErrorShown) { keyErrorShown = true; toast('No se han podido pedir los datos a YouTube. Comprueba la conexión.'); }
+        render();
+        return false;
+      }
+    }
+    apiError = '';
+    return true;
+  }
+  function applyDetails(vid, d) {
+    state.lists.forEach(l => l.videos.forEach(v => {
+      if (v.vid !== vid) return;
+      v.detailsOk = true;
+      if (d.missing) { v.unavailable = true; if (!v.titleOk && v.title === PENDING) v.title = `Vídeo no disponible (${vid})`; return; }
+      v.unavailable = false;
+      v.title = d.title; v.titleOk = true; v.channel = d.channel;
+      v.published = d.published; v.views = d.views; v.duration = d.duration;
+    }));
+    scheduleSave();
+  }
+  async function loadInfo(vids) {
+    if (!vids.length) return;
+    if (state.apiKey && await fetchDetails(vids)) return;
+    queueTitles(vids);
+  }
+
+  /* ---------- Listas de YouTube ---------- */
+  const LIST_REASONS = {
+    playlistNotFound: 'no existe o es privada',
+    playlistItemsNotAccessible: 'es privada',
+    2: 'el enlace de la lista no es válido',
+    100: 'no existe o es privada',
+    101: 'su primer vídeo no permite verse fuera de YouTube',
+    150: 'su primer vídeo no permite verse fuera de YouTube',
+    152: 'YouTube no acepta el reproductor desde esta dirección',
+    153: 'YouTube no acepta el reproductor desde esta dirección',
+    timeout: 'YouTube no ha respondido a tiempo',
+    cancel: 'has cancelado la lectura',
+    empty: 'YouTube la devuelve vacía'
+  };
+  // Con clave: lee la lista completa, sin límite de 200 vídeos
+  async function readPlaylistAPI(listId) {
+    const ids = []; let token = '';
+    do {
+      const r = await fetch('https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults=50&playlistId='
+        + encodeURIComponent(listId) + '&key=' + encodeURIComponent(state.apiKey) + (token ? '&pageToken=' + token : ''));
+      const d = await r.json();
+      if (!r.ok) throw ((d && d.error && d.error.errors && d.error.errors[0] && d.error.errors[0].reason) || 'http' + r.status);
+      (d.items || []).forEach(it => { const id = it.contentDetails && it.contentDetails.videoId; if (id) ids.push(id); });
+      token = d.nextPageToken || '';
+    } while (token && ids.length < 5000);
+    if (!ids.length) throw 'empty';
+    return ids;
+  }
+  async function readPlaylist(listId) {
+    if (!state.apiKey) throw 'nokey';
+    return readPlaylistAPI(listId);
+  }
+
+  /* ---------- Añadir ---------- */
+  let adding = false, lastAddMsg = '';
+  async function addVideos(text, listId) {
+    const l = listId ? getList(listId) : active();
+    if (!l || adding) return false;
+    const parts = text.split(/[\s,]+/).filter(Boolean);
+    const vids = [], lists = [], reasons = []; let bad = 0, listFail = 0, priv = 0;
+    parts.forEach(p => {
+      const r = parseInput(p);
+      if (!r) bad++;
+      else if (r.type === 'private') priv++;
+      else if (r.type === 'video') vids.push(r.vid);
+      else if (!lists.includes(r.id)) lists.push(r.id);
+    });
+    const msgEl = $('#addMsg'), btn = $('#addBtn');
+    if (lists.length) {
+      adding = true; btn.disabled = true;
+      for (let k = 0; k < lists.length; k++) {
+        if (!state.apiKey) { listFail++; reasons.push('nokey'); continue; }
+        msgEl.textContent = `Leyendo la lista de YouTube${lists.length > 1 ? ` ${k + 1} de ${lists.length}` : ''}…`;
+        try { vids.push(...await readPlaylist(lists[k])); }
+        catch (e) { listFail++; reasons.push(e); }
+      }
+      adding = false; btn.disabled = false;
+    }
+    const target = getList(l.id);
+    if (!target) return false;
+    const added = []; let dup = 0;
+    vids.forEach(vid => {
+      if (state.settings.noDup && (target.videos.some(v => v.vid === vid) || added.some(v => v.vid === vid))) { dup++; return; }
+      added.push({ uid: uid(), vid, title: PENDING, titleOk: false, added: Date.now() });
+    });
+    target.videos.push(...added);
+    save(); render();
+    const msg = [];
+    if (added.length) msg.push(added.length === 1 ? `Vídeo añadido a «${target.name}».` : `${added.length} vídeos añadidos a «${target.name}».`);
+    if (dup) msg.push(dup === 1 ? '1 ya estaba en la lista.' : `${dup} ya estaban en la lista.`);
+    if (bad) msg.push(bad === 1 ? '1 enlace no es de YouTube.' : `${bad} enlaces no son de YouTube.`);
+    if (priv) msg.push('«Ver más tarde» y «Vídeos que me gustan» son privadas de tu cuenta: copia sus vídeos a una lista nueva en YouTube, ponla como Oculta y pega su enlace.');
+    if (listFail) {
+      if (reasons[0] === 'nokey') msg.push('Para añadir una lista de YouTube entera, pulsa «Enlaces», usa el extractor y pega aquí los enlaces de sus vídeos (o añade la clave de YouTube).');
+      else {
+        const why = LIST_REASONS[reasons[0]] || `error ${reasons[0]}`;
+        msg.push(`No se pudo leer ${listFail === 1 ? 'la lista' : listFail + ' listas'} de YouTube: ${why}.`);
+      }
+    }
+    msgEl.textContent = msg.join(' ');
+    lastAddMsg = msg.join(' ');
+    loadInfo(added.map(v => v.vid));
+    return added.length > 0 || (!bad && !dup && !listFail && !priv);
+  }
+
+  /* ---------- Quitar con deshacer ---------- */
+  let lastRemoved = null;
+  function removeVideo(listId, vuid) {
+    const l = getList(listId);
+    const i = l ? l.videos.findIndex(v => v.uid === vuid) : -1;
+    if (i < 0) return;
+    const [v] = l.videos.splice(i, 1);
+    lastRemoved = [{ listId, v, i }];
+    save();
+    render();
+    toast(`Quitado: ${v.title}`, { label: 'Deshacer', fn: undoRemove });
+  }
+  function undoRemove() {
+    if (!lastRemoved || !lastRemoved.length) return;
+    const items = lastRemoved.slice().sort((a, b) => a.i - b.i);
+    let n = 0;
+    items.forEach(r => {
+      const l = getList(r.listId);
+      if (!l) return;
+      l.videos.splice(Math.min(r.i, l.videos.length), 0, r.v); n++;
+    });
+    lastRemoved = null;
+    save(); render();
+    toast(n === 1 ? 'Vídeo devuelto a la lista.' : `${n} vídeos devueltos a sus listas.`);
+  }
+
+  /* ---------- Seleccionar varios ---------- */
+  let selecting = false;
+  const selected = new Set();
+  function visibleNow() {
+    if (isAll()) return state.lists.flatMap(l => visible(l));
+    const l = active();
+    return l ? visible(l) : [];
+  }
+  function setSelecting(on) {
+    selecting = on;
+    selected.clear();
+    document.body.classList.toggle('selecting', on);
+    $('#selBar').hidden = !on;
+    $('#selectBtn').setAttribute('aria-pressed', String(on));
+    renderList(); renderSelBar();
+  }
+  function toggleSelected(vuid) {
+    if (selected.has(vuid)) selected.delete(vuid); else selected.add(vuid);
+    renderList(); renderSelBar();
+  }
+  function renderSelBar() {
+    if (!selecting) return;
+    const n = selected.size;
+    $('#selCount').textContent = n ? `${n} seleccionado${n === 1 ? '' : 's'}` : 'Toca los vídeos para seleccionarlos';
+    $('#selDelete').disabled = !n;
+    $('#selMove').disabled = !n;
+    const vis = visibleNow();
+    const allOn = vis.length > 0 && vis.every(v => selected.has(v.uid));
+    $('#selAll').textContent = allOn ? 'Quitar selección' : 'Seleccionar todos';
+    $('#selAll').disabled = !vis.length;
+  }
+  function deleteSelected() {
+    const n = selected.size;
+    if (!n) return;
+    if (!confirm(`¿Quitar ${n === 1 ? 'el vídeo seleccionado' : `los ${n} vídeos seleccionados`}?`)) return;
+    const removed = [];
+    state.lists.forEach(l => {
+      l.videos.forEach((v, i) => { if (selected.has(v.uid)) removed.push({ listId: l.id, v, i }); });
+      l.videos = l.videos.filter(v => !selected.has(v.uid));
+    });
+    lastRemoved = removed;
+    save();
+    setSelecting(false);
+    render();
+    toast(removed.length === 1 ? 'Vídeo quitado.' : `${removed.length} vídeos quitados.`, { label: 'Deshacer', fn: undoRemove });
+  }
+
+  /* ---------- Mostrar el recuadro de añadir links ---------- */
+  let addOpen = false;
+
+  /* ---------- Mover a otra lista ---------- */
+  let lastMove = null;
+  // Mueve los vídeos (por uid) a la lista toId, desde la lista en la que esté cada uno
+  function moveVideos(uids, toId) {
+    const to = getList(toId);
+    if (!to) return null;
+    const moved = []; let dups = 0, same = 0;
+    state.lists.forEach(from => {
+      if (from === to) { from.videos.forEach(v => { if (uids.has(v.uid)) same++; }); return; }
+      from.videos.forEach((v, i) => { if (uids.has(v.uid)) moved.push({ fromId: from.id, v, i }); });
+      from.videos = from.videos.filter(v => !uids.has(v.uid));
+    });
+    moved.forEach(m => {
+      m.added = !(state.settings.noDup && to.videos.some(x => x.vid === m.v.vid));
+      if (m.added) to.videos.push(m.v); else dups++;
+    });
+    lastMove = { toId, moved };
+    save(); render();
+    return { to, moved: moved.length, dups, same };
+  }
+  function moveVideo(fromId, vuid, toId) {
+    const r = moveVideos(new Set([vuid]), toId);
+    if (!r || !r.moved) return;
+    const from = getList(fromId);
+    toast(r.dups ? `Ya estaba en «${r.to.name}»: se ha quitado de «${from ? from.name : 'su lista'}».` : `Movido a «${r.to.name}».`, { label: 'Deshacer', fn: undoMove });
+  }
+  function undoMove() {
+    if (!lastMove) return;
+    const to = getList(lastMove.toId);
+    const items = lastMove.moved.slice().sort((a, b) => a.i - b.i);
+    if (to) { const back = new Set(items.filter(m => m.added).map(m => m.v.uid)); to.videos = to.videos.filter(x => !back.has(x.uid)); }
+    items.forEach(m => { const from = getList(m.fromId); if (from) from.videos.splice(Math.min(m.i, from.videos.length), 0, m.v); });
+    const n = items.length;
+    lastMove = null;
+    save(); render();
+    toast(n === 1 ? 'Vídeo devuelto a su lista.' : `${n} vídeos devueltos a sus listas.`);
+  }
+  // Mover los seleccionados
+  const moveSheet = $('#moveSheet');
+  function openMoveSheet() {
+    const n = selected.size;
+    if (!n) return;
+    const cur = active();
+    $('#msTitle').textContent = `Mover ${n === 1 ? '1 vídeo' : n + ' vídeos'} a…`;
+    const targets = state.lists.filter(l => !cur || l.id !== cur.id);
+    $('#moveSheetItems').innerHTML = targets.map(l => `<button class="menu-item" type="button" data-move="${l.id}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span class="min-w-0 truncate">${esc(l.name)}</span><span class="count">${l.videos.length}</span></button>`).join('')
+      + (targets.length ? '' : '<p class="text-sm text-muted px-3 py-2">No hay otras listas. Crea una nueva:</p>')
+      + `<button class="menu-item" type="button" data-move="__new"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva lista…</button>`;
+    moveSheet.showModal();
+    const first = $('#moveSheetItems .menu-item'); if (first) first.focus();
+  }
+  function moveSelectedTo(toId) {
+    const r = moveVideos(new Set(selected), toId);
+    setSelecting(false);
+    if (!r) return;
+    const parts = [];
+    const added = r.moved - r.dups;
+    if (added) parts.push(`${added === 1 ? '1 vídeo movido' : added + ' vídeos movidos'} a «${r.to.name}».`);
+    if (r.dups) parts.push(`${r.dups === 1 ? '1 ya estaba allí y se ha quitado del origen' : r.dups + ' ya estaban allí y se han quitado del origen'}.`);
+    if (r.same) parts.push(`${r.same === 1 ? '1 ya estaba' : r.same + ' ya estaban'} en esa lista.`);
+    toast(parts.join(' ') || 'No se ha movido nada.', r.moved ? { label: 'Deshacer', fn: undoMove } : null);
+  }
+  $('#selMove').addEventListener('click', openMoveSheet);
+  $('#msCancel').addEventListener('click', () => moveSheet.close());
+  moveSheet.addEventListener('click', e => { if (e.target === moveSheet) moveSheet.close(); });
+  $('#moveSheetItems').addEventListener('click', e => {
+    const b = e.target.closest('[data-move]');
+    if (!b) return;
+    moveSheet.close();
+    if (b.dataset.move === '__new') {
+      const name = (prompt('Nombre de la nueva lista:') || '').trim();
+      if (!name) return;
+      const l = { id: uid(), name, videos: [] };
+      state.lists.push(l);
+      moveSelectedTo(l.id);
+    } else moveSelectedTo(b.dataset.move);
+  });
+
+  /* ---------- Listas ---------- */
+  function newList() {
+    const name = (prompt('Nombre de la nueva lista (por ejemplo: Recetas, Deporte, Para dormir):') || '').trim();
+    if (!name) return;
+    const l = { id: uid(), name, videos: [] };
+    state.lists.push(l); state.activeId = l.id;
+    save(); render();
+    $('#addInput').focus();
+  }
+  function renameList(id) {
+    const l = typeof id === 'string' ? getList(id) : active(); if (!l) return;
+    const name = (prompt('Nuevo nombre de la lista:', l.name) || '').trim();
+    if (!name || name === l.name) return;
+    l.name = name; save(); render();
+  }
+  function deleteList(id) {
+    const l = typeof id === 'string' ? getList(id) : active(); if (!l) return;
+    const n = l.videos.length;
+    if (!confirm(`¿Eliminar la lista «${l.name}»${n ? ` y sus ${n} vídeo${n === 1 ? '' : 's'}` : ''}? No se puede deshacer.`)) return;
+    const wasActive = !isAll() && active() === l;
+    const idx = state.lists.indexOf(l);
+    state.lists.splice(idx, 1);
+    if (wasActive) { const next = state.lists[Math.max(0, idx - 1)]; state.activeId = next ? next.id : null; }
+    save(); render();
+    toast(`Lista «${l.name}» eliminada.`);
+  }
+
+  /* ---------- Abrir en YouTube ---------- */
+  // Abre en otra pestaña la lista empezando por el vídeo pulsado (YouTube admite hasta 50)
+  function openInYouTube(listId, i) {
+    const l = getList(listId);
+    const ord = l ? visible(l) : [];
+    if (!ord[i]) return;
+    const ids = ord.slice(i, i + 50).map(v => v.vid);
+    window.open('https://www.youtube.com/watch_videos?video_ids=' + ids.join(','), '_blank', 'noopener');
+  }
+
+  /* ---------- Pintar ---------- */
+  const FOLDER_SVG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
+  const CHEV_SVG = '<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+  const catOf = l => state.categories.find(c => c.id === l.catId) || null;
+  // Categorías desplegadas en esta sesión: al abrir la app todas aparecen plegadas
+  const openCats = new Set();
+  const toggleCat = id => { if (openCats.has(id)) openCats.delete(id); else openCats.add(id); };
+  const rootLists = () => state.lists.filter(l => !catOf(l));
+  const catLists = c => state.lists.filter(l => l.catId === c.id);
+  const orderedLists = () => [...state.categories.flatMap(catLists), ...rootLists()];
+  function newCategory(ask) {
+    const name = (prompt(ask || 'Nombre de la nueva categoría (por ejemplo: Ocio, Aprender, Niños):') || '').trim();
+    if (!name) return null;
+    const c = { id: uid(), name };
+    state.categories.push(c);
+    save();
+    return c;
+  }
+  function renameCategory(c) {
+    const name = (prompt('Nuevo nombre de la categoría:', c.name) || '').trim();
+    if (!name || name === c.name) return;
+    c.name = name; save(); render(); renderCatAdmin();
+  }
+  function deleteCategory(c) {
+    const n = catLists(c).length;
+    if (!confirm(`¿Eliminar la categoría «${c.name}»?${n ? ` Sus ${n} lista${n === 1 ? '' : 's'} pasarán a la raíz; no se borra ningún vídeo.` : ''}`)) return;
+    catLists(c).forEach(l => { l.catId = null; });
+    state.categories = state.categories.filter(x => x !== c);
+    save(); render(); renderCatAdmin();
+    toast(`Categoría «${c.name}» eliminada.`);
+  }
+
+  function renderTabs() {
+    const nav = $('#tabs');
+    nav.innerHTML = '';
+    const mk = (cls, html, onClick, attrs) => {
+      const b = document.createElement('button');
+      b.className = cls; b.type = 'button'; b.innerHTML = html;
+      Object.entries(attrs || {}).forEach(([k, v]) => b.setAttribute(k, v));
+      b.addEventListener('click', e => { if (Date.now() < suppressUntil) return; onClick(e); });
+      nav.appendChild(b);
+      return b;
+    };
+    const go = id => () => { if (selecting) setSelecting(false); state.activeId = id; save(); render(); $('#addMsg').textContent = ''; };
+    const listTab = (l, inCat) => mk('tab' + (inCat ? ' in-cat' : ''),
+      `<span class="ini" aria-hidden="true">${esc(l.name.trim().charAt(0) || '·')}<span class="count">${l.videos.length}</span></span><span class="name">${esc(l.name)}</span><span class="count c2">${l.videos.length}</span>`,
+      go(l.id), { role: 'tab', 'aria-selected': String(l.id === state.activeId), title: l.name, 'data-lid': l.id });
+    if (state.lists.length) {
+      const total = state.lists.reduce((a, l) => a + l.videos.length, 0);
+      mk('tab', `<span class="ini" aria-hidden="true">★<span class="count">${total}</span></span><span class="name">Todas</span><span class="count c2">${total}</span>`,
+        go(ALL), { role: 'tab', 'aria-selected': String(isAll()) });
+    }
+    state.categories.forEach(c => {
+      const ls = catLists(c);
+      const hasActive = !isAll() && ls.some(l => l.id === state.activeId);
+      mk('tab cat' + (hasActive ? ' has-active' : ''),
+        `<span class="ini" aria-hidden="true">${FOLDER_SVG}<span class="count">${ls.length}</span></span><span class="fico">${FOLDER_SVG}</span><span class="name">${esc(c.name)}</span><span class="count c2 lists" title="${ls.length} lista${ls.length === 1 ? '' : 's'}">${ls.length}</span>${CHEV_SVG}`,
+        () => { toggleCat(c.id); renderTabs(); },
+        { 'aria-expanded': String(openCats.has(c.id)), title: `Categoría ${c.name}`, 'data-cid': c.id });
+      if (openCats.has(c.id)) ls.forEach(l => listTab(l, true));
+    });
+    rootLists().forEach(l => listTab(l, false));
+    mk('tab add', '<span class="ini" aria-hidden="true">+</span><span class="name">+ Nueva lista</span>', newList, { 'aria-label': 'Nueva lista' });
+    mk('tab add', `<span class="ini" aria-hidden="true">${FOLDER_SVG}</span><span class="name">+ Nueva categoría</span>`,
+      () => { if (newCategory()) render(); }, { 'aria-label': 'Nueva categoría' });
+  }
+
+  // Elegir la categoría de la lista abierta
+  const catSheet = $('#catSheet');
+  let catTargetId = null;
+  function openCatSheet(id) {
+    const l = typeof id === 'string' ? getList(id) : active(); if (!l) return;
+    catTargetId = l.id;
+    $('#csTitle').textContent = `Categoría de «${l.name}»`;
+    const row = (id, label, on, icon) => `<button class="menu-item" type="button" data-cat="${id}"${on ? ' aria-current="true" style="background:color-mix(in srgb, var(--accent) 10%, transparent)"' : ''}>${icon}<span class="min-w-0 truncate">${esc(label)}</span>${on ? '<span class="count">✓</span>' : ''}</button>`;
+    $('#catSheetItems').innerHTML =
+      row('__root', 'Sin categoría (en la raíz)', !catOf(l), '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>') +
+      state.categories.map(c => row(c.id, c.name, l.catId === c.id, FOLDER_SVG)).join('') +
+      row('__new', 'Nueva categoría…', false, '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>');
+    catSheet.showModal();
+    const cur = $('#catSheetItems [aria-current="true"]'); if (cur) cur.focus();
+  }
+  $('#catBtn').addEventListener('click', () => openCatSheet());
+  $('#csCancel').addEventListener('click', () => catSheet.close());
+  catSheet.addEventListener('click', e => { if (e.target === catSheet) catSheet.close(); });
+  $('#catSheetItems').addEventListener('click', e => {
+    const b = e.target.closest('[data-cat]');
+    const l = getList(catTargetId);
+    if (!b || !l) return;
+    catSheet.close();
+    let c = null;
+    if (b.dataset.cat === '__new') { c = newCategory(); if (!c) return; }
+    else if (b.dataset.cat !== '__root') c = state.categories.find(x => x.id === b.dataset.cat);
+    l.catId = c ? c.id : null;
+    if (c) openCats.add(c.id);
+    save(); render();
+    toast(c ? `«${l.name}» está ahora en la categoría «${c.name}».` : `«${l.name}» está ahora en la raíz.`);
+    if ($('#listSheet').open) openListSheet();
+  });
+
+  // Gestión de categorías en Ajustes
+  function renderCatAdmin() {
+    const box = $('#catAdmin');
+    box.innerHTML = state.categories.length
+      ? state.categories.map(c => { const n = catLists(c).length; return `<div class="cat-row">
+          <span class="fico" style="color:var(--muted);display:inline-flex">${FOLDER_SVG}</span>
+          <span class="nm">${esc(c.name)}</span><span class="nl">${n} lista${n === 1 ? '' : 's'}</span>
+          <button class="btn ghost icon-btn" type="button" data-cren="${c.id}" aria-label="Renombrar la categoría ${esc(c.name)}" title="Renombrar">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4z"/></svg></button>
+          <button class="btn ghost icon-btn danger" type="button" data-cdel="${c.id}" aria-label="Eliminar la categoría ${esc(c.name)}" title="Eliminar">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
+        </div>`; }).join('')
+      : '<p class="text-muted text-[14px]">Todavía no hay categorías.</p>';
+  }
+  $('#catAdmin').addEventListener('click', e => {
+    const r = e.target.closest('[data-cren]'), d = e.target.closest('[data-cdel]');
+    const find = id => state.categories.find(c => c.id === id);
+    if (r) renameCategory(find(r.dataset.cren));
+    if (d) deleteCategory(find(d.dataset.cdel));
+  });
+  $('#catAdd').addEventListener('click', () => { if (newCategory()) { render(); renderCatAdmin(); } });
+
+  const EQ = '<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>';
+  function cardHTML(v, i) {
+    const isNow = false;
+    const isSel = selected.has(v.uid);
+    const meta = metaText(v);
+    const dur = v.duration ? fmtDur(v.duration) : '';
+    return `<li class="card${isNow ? ' is-now' : ''}${isSel ? ' is-sel' : ''}${v.unavailable ? ' is-off' : ''}">
+      <button class="play" type="button" data-i="${i}" data-uid="${v.uid}" aria-label="${selecting ? 'Seleccionar' : 'Abrir en YouTube desde'} ${esc(v.title)}"${selecting ? ` aria-pressed="${isSel}"` : ''}${isNow ? ' aria-current="true"' : ''}>
+        <span class="check" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span>
+        <span class="cpos">${isNow ? EQ : i + 1}</span>
+        <span class="thumb">
+          <img src="${thumb(v.vid)}" alt="" loading="lazy" width="320" height="180" draggable="false">
+          <span class="pos">${i + 1}</span>
+          ${dur ? `<span class="dur">${dur}</span>` : ''}
+          <span class="badge">${EQ}Sonando</span>
+        </span>
+        <span class="info">
+          <span class="title${v.titleOk ? '' : ' pending'}">${esc(v.title)}</span>
+          ${meta ? `<span class="meta">${esc(meta)}</span>` : ''}
+        </span>
+        ${dur ? `<span class="cdur">${dur}</span>` : ''}
+      </button>
+      <button class="remove" type="button" data-remove="${v.uid}" aria-label="Quitar ${esc(v.title)} de la lista" title="Quitar de la lista">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </li>`;
+  }
+
+  function renderList() {
+    const all = isAll();
+    const l = active();
+    const has = all || !!l;
+    $('#listSection').hidden = !has;
+    $('#noLists').hidden = has;
+    if (!has) return;
+    if (!all) state.activeId = l.id;
+    ['#playAllBtn', '#renameBtn', '#deleteListBtn', '#addToggle', '#addMsg', '#catBtn'].forEach(sel => { $(sel).hidden = all; });
+    const formOpen = !all && (addOpen || l.videos.length === 0);
+    $('#addForm').hidden = !formOpen;
+    $('#addToggle').setAttribute('aria-expanded', String(formOpen));
+    syncProxies();
+    const words = queryWords();
+    const lists = all ? orderedLists().filter(x => x.videos.length) : [l];
+    const shownBy = new Map(lists.map(x => [x.id, visible(x)]));
+    const total = lists.reduce((a, x) => a + x.videos.length, 0);
+    const shown = [...shownBy.values()].reduce((a, arr) => a + arr.length, 0);
+    const pl = n => `${n} vídeo${n === 1 ? '' : 's'}`;
+
+    if (all) $('#listName').textContent = 'Todas las listas';
+    else $('#listName').innerHTML = `<button type="button" class="namebtn" id="listNameBtn" title="Toca para renombrar" aria-label="Renombrar la lista ${esc(l.name)}"><span>${esc(l.name)}</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4z"/></svg></button>`;
+    $('#pkName').textContent = all ? 'Todas las listas' : l.name;
+    $('#pkCount').textContent = total;
+    let meta;
+    if (all) meta = total ? `${lists.length} lista${lists.length === 1 ? '' : 's'} con vídeos · ${pl(total)}` : 'Todavía no hay vídeos en ninguna lista';
+    else meta = total ? `${pl(total)} · toca uno y se abre la lista en YouTube desde ese vídeo` : 'Sin vídeos todavía';
+    if (words.length && total) meta = `Mostrando ${shown} de ${pl(total)} · búsqueda: «${query.trim()}»`;
+    $('#listMeta').textContent = meta;
+
+    $('#playAllBtn').disabled = !shown;
+    $('#selectBtn').hidden = total === 0;
+    if (selecting && total === 0) { selecting = false; selected.clear(); document.body.classList.remove('selecting'); $('#selBar').hidden = true; $('#selectBtn').setAttribute('aria-pressed', 'false'); }
+    $('#emptyList').hidden = all || total > 0;
+    $('#toolbar').hidden = total === 0;
+    $('#searchInput').placeholder = all ? 'Buscar en todas las listas por palabras del título o del canal' : 'Buscar en esta lista por palabras del título o del canal';
+    $('#noResults').hidden = !(words.length && total && !shown);
+    const anyNoDur = [...shownBy.values()].some(arr => arr.some(v => !v.duration && !v.unavailable));
+    $('#durHint').hidden = !!state.apiKey || !anyNoDur;
+    const shownAll = [...shownBy.values()].flat();
+    const pend = API_SORTS.includes(state.sort) && state.apiKey ? shownAll.filter(v => !v.detailsOk) : [];
+    $('#dataHint').hidden = !pend.length;
+    if (pend.length) {
+      $('#dataHintText').textContent = `${pend.length === shownAll.length ? 'Ningún vídeo tiene' : pend.length + ' de ' + shownAll.length + ' vídeos no tienen'} todavía datos de YouTube, así que el orden no se aplica${pend.length === shownAll.length ? '' : ' a esos (aparecen al final)'}.`
+        + (apiError ? ` Motivo: ${apiError}.` : '');
+      $('#dataHintBtn').dataset.vids = pend.map(v => v.vid).join(',');
+    }
+
+    const ul = $('#cards'), box = $('#allSections');
+    ul.hidden = all; box.hidden = !all;
+    if (!all) {
+      ul.className = 'cards view-' + state.view;
+      ul.dataset.list = l.id;
+      ul.innerHTML = shownBy.get(l.id).map(cardHTML).join('');
+      box.innerHTML = '';
+    } else {
+      ul.innerHTML = '';
+      box.innerHTML = lists.map(x => {
+        const vis = shownBy.get(x.id);
+        if (!vis.length) return '';
+        return `<section class="mb-10" aria-label="${esc(x.name)}">
+          <div class="flex flex-wrap items-end justify-between gap-2 mb-4 pb-3 border-b-2 border-line">
+            <h3 class="font-display font-extrabold text-2xl sm:text-3xl leading-none tracking-tight break-words">${catOf(x) ? `<span class="block font-body font-semibold text-[13px] text-muted mb-1 tracking-normal">${esc(catOf(x).name)}</span>` : ''}${esc(x.name)}
+              <span class="font-body font-semibold text-base text-muted ml-1">${words.length ? `${vis.length} de ${x.videos.length}` : x.videos.length}</span></h3>
+            <button class="btn ghost" type="button" data-open="${x.id}">Abrir lista →</button>
+          </div>
+          <ol class="cards view-${state.view}" data-list="${x.id}">${vis.map(cardHTML).join('')}</ol>
+        </section>`;
+      }).join('');
+    }
+  }
+
+  function renderControls() {
+    $('#viewSel').value = state.view;
+    $('#sortSel').value = state.sort;
+    $('#apiGroup').label = state.apiKey ? 'Datos de YouTube' : 'Datos de YouTube (necesitan clave)';
+    $('#keyBtnText').textContent = state.apiKey ? 'Clave de YouTube ✓' : 'Clave de YouTube';
+  }
+
+  function render() {
+    renderTabs(); renderList(); renderControls();
+  }
+
+  /* ---------- Avisos ---------- */
+  let toastTimer;
+  function toast(text, action) {
+    const box = $('#toast');
+    box.innerHTML = `<div class="toast"><span>${esc(text)}</span>${action ? `<button type="button">${esc(action.label)}</button>` : ''}</div>`;
+    if (action) box.querySelector('button').addEventListener('click', () => { box.innerHTML = ''; action.fn(); });
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { box.innerHTML = ''; }, action ? 6000 : 4000);
+  }
+
+  /* ---------- Clave de YouTube ---------- */
+  let pendingSort = null;
+  const dlg = $('#keyDialog');
+  $('#keyInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); dlg.close('save'); }
+  });
+  function openKeyDialog() {
+    $('#keyInput').value = state.apiKey;
+    $('#keyClear').hidden = !state.apiKey;
+    $('#keyReason').hidden = !pendingSort;
+    const st = $('#keyStatus');
+    st.hidden = !state.apiKey;
+    st.textContent = apiError ? `⚠ La clave guardada no funciona: ${apiError}.` : 'Clave guardada.';
+    st.style.color = apiError ? 'var(--danger)' : 'var(--muted)';
+    dlg.showModal();
+  }
+  dlg.addEventListener('close', async () => {
+    const action = dlg.returnValue;
+    dlg.returnValue = '';
+    if (action === 'clear') {
+      state.apiKey = '';
+      if (API_SORTS.includes(state.sort)) state.sort = 'added';
+      pendingSort = null;
+      save(); render();
+      toast('Clave borrada.');
+      return;
+    }
+    if (action !== 'save') { pendingSort = null; return; }
+    const key = $('#keyInput').value.trim();
+    if (!key) { pendingSort = null; return; }
+    state.apiKey = key; keyErrorShown = false;
+    const missing = [...new Set(state.lists.flatMap(l => l.videos.filter(v => !v.detailsOk).map(v => v.vid)))];
+    toast(missing.length ? `Clave guardada. Cargando datos de ${missing.length} vídeo${missing.length === 1 ? '' : 's'}…` : 'Clave guardada.');
+    if (pendingSort) { state.sort = pendingSort; pendingSort = null; }
+    save(); render();
+    if (missing.length) {
+      keyErrorShown = true;
+      const ok = await fetchDetails(missing);
+      toast(ok ? 'Clave correcta: datos de YouTube cargados.' : `La clave no funciona: ${apiError}.`);
+    }
+  });
+
+  /* ---------- Enlaces ---------- */
+  const linksDlg = $('#linksDialog');
+  const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u; } };
+  function normUrl(raw) {
+    let t = raw.trim();
+    if (!t) return null;
+    if (!/^https?:\/\//i.test(t)) t = 'https://' + t;
+    try { const u = new URL(t); return /^https?:$/.test(u.protocol) && u.hostname.includes('.') ? u.href : null; }
+    catch (e) { return null; }
+  }
+  function renderLinks() {
+    const ul = $('#linksList');
+    $('#linksEmpty').hidden = state.links.length > 0;
+    ul.innerHTML = state.links.map(l => `<li class="linkrow">
+      <a class="linkopen" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">
+        <span class="lk-ico" aria-hidden="true">${esc((l.name || hostOf(l.url)).trim().charAt(0) || '·')}</span>
+        <span class="lk-text"><span class="lk-name">${esc(l.name || hostOf(l.url))}</span><span class="lk-host">${esc(hostOf(l.url))}</span></span>
+        <svg class="lk-ext" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+        <span class="sr-only">(se abre en una pestaña nueva)</span>
+      </a>
+      <button class="lk-del" type="button" data-del="${l.id}" aria-label="Quitar el enlace ${esc(l.name || hostOf(l.url))}" title="Quitar enlace">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </li>`).join('');
+  }
+  $('#linksBtn').addEventListener('click', () => { renderLinks(); $('#linkMsg').textContent = ''; linksDlg.showModal(); });
+  $('#linksClose').addEventListener('click', () => linksDlg.close());
+  linksDlg.addEventListener('click', e => { if (e.target === linksDlg) linksDlg.close(); });
+  $('#linksList').addEventListener('click', e => {
+    const del = e.target.closest('[data-del]');
+    if (!del) return;
+    const l = state.links.find(x => x.id === del.dataset.del);
+    if (!l || !confirm(`¿Quitar el enlace «${l.name || hostOf(l.url)}»?`)) return;
+    state.links = state.links.filter(x => x !== l);
+    save(); renderLinks();
+  });
+  $('#linkForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const url = normUrl($('#linkUrl').value);
+    const msg = $('#linkMsg');
+    if (!url) { msg.textContent = 'Escribe una dirección web válida.'; $('#linkUrl').focus(); return; }
+    if (state.links.some(l => l.url === url)) { msg.textContent = 'Ese enlace ya está guardado.'; return; }
+    state.links.push({ id: uid(), name: $('#linkName').value.trim() || hostOf(url), url });
+    save(); renderLinks();
+    $('#linkName').value = ''; $('#linkUrl').value = '';
+    msg.textContent = 'Enlace añadido.';
+  });
+
+  /* ---------- Copia de seguridad ---------- */
+  function exportData() {
+    const data = { app: 'videoteca', version: 3, exported: new Date().toISOString(),
+      links: state.links.map(l => ({ name: l.name, url: l.url })),
+      categories: state.categories.map(c => c.name),
+      lists: state.lists.map(l => ({ name: l.name, category: catOf(l) ? catOf(l).name : null, videos: l.videos.map(v => ({
+        vid: v.vid, title: v.title, titleOk: v.titleOk, channel: v.channel, published: v.published,
+        views: v.views, duration: v.duration, added: v.added })) })) };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `videoteca-copia-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  async function importData(file) {
+    try {
+      const data = JSON.parse(await file.text());
+      if (!data || !Array.isArray(data.lists)) throw new Error();
+      let lists = 0; const newVids = [];
+      data.lists.forEach(src => {
+        if (!src || !src.name) return;
+        let l = state.lists.find(x => x.name.toLowerCase() === String(src.name).toLowerCase());
+        if (!l) { l = { id: uid(), name: String(src.name), videos: [] }; state.lists.push(l); lists++; }
+        if (src.category && !catOf(l)) {
+          let c = state.categories.find(x => x.name.toLowerCase() === String(src.category).toLowerCase());
+          if (!c) { c = { id: uid(), name: String(src.category) }; state.categories.push(c); }
+          l.catId = c.id;
+        }
+        (src.videos || []).forEach(v => {
+          if (!v || !/^[\w-]{11}$/.test(v.vid) || (state.settings.noDup && l.videos.some(x => x.vid === v.vid))) return;
+          l.videos.push({ uid: uid(), vid: v.vid, title: v.title || PENDING, titleOk: !!v.titleOk,
+            channel: v.channel, published: v.published, views: v.views, duration: v.duration, added: v.added });
+          newVids.push(v.vid);
+        });
+      });
+      if (Array.isArray(data.links)) data.links.forEach(x => {
+        const url = x && normUrl(String(x.url || ''));
+        if (url && !state.links.some(l => l.url === url)) state.links.push({ id: uid(), name: String(x.name || hostOf(url)), url });
+      });
+      if (!state.activeId && state.lists[0]) state.activeId = state.lists[0].id;
+      save(); render();
+      toast(`Importado: ${lists} lista${lists === 1 ? '' : 's'} nueva${lists === 1 ? '' : 's'} y ${newVids.length} vídeo${newVids.length === 1 ? '' : 's'}.`);
+      if (state.apiKey) fetchDetails(newVids);
+    } catch (e) {
+      toast('Ese archivo no es una copia de Videoteca. Elige el .json que descargaste con Exportar.');
+    }
+  }
+
+  /* ---------- Eventos ---------- */
+  $('#main').addEventListener('click', e => {
+    const open = e.target.closest('[data-open]');
+    if (open) { state.activeId = open.dataset.open; save(); render(); $('#listSection').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    const box = e.target.closest('ol[data-list]');
+    if (!box) return;
+    const rm = e.target.closest('[data-remove]');
+    if (rm) { removeVideo(box.dataset.list, rm.dataset.remove); return; }
+    const pl = e.target.closest('[data-i]');
+    if (!pl) return;
+    if (Date.now() < suppressUntil) return;
+    if (selecting) toggleSelected(pl.dataset.uid);
+    else openInYouTube(box.dataset.list, Number(pl.dataset.i));
+  });
+  $('#selectBtn').addEventListener('click', () => setSelecting(!selecting));
+  $('#listName').addEventListener('click', e => { if (e.target.closest('#listNameBtn')) renameList(); });
+  $('#selCancel').addEventListener('click', () => setSelecting(false));
+  $('#selDelete').addEventListener('click', deleteSelected);
+  $('#selAll').addEventListener('click', () => {
+    const vis = visibleNow();
+    const allOn = vis.every(v => selected.has(v.uid));
+    vis.forEach(v => allOn ? selected.delete(v.uid) : selected.add(v.uid));
+    renderList(); renderSelBar();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && selecting && !document.querySelector('dialog[open]') && document.activeElement !== $('#searchInput')) setSelecting(false);
+  });
+  const cm = $('#cardMenu');
+  let cmCtx = null, cmGuard = false, lpTimer = null, lpStart = null, lpEl = null, suppressUntil = 0;
+  function openCardMenu(listId, vuid) {
+    const l = getList(listId);
+    const v = l && l.videos.find(x => x.uid === vuid);
+    if (!v || cm.open) return;
+    cmCtx = { listId, vuid };
+    $('#cmThumb').src = thumb(v.vid);
+    $('#cmTitle').textContent = v.title;
+    $('#cmMain').hidden = false; $('#cmLists').hidden = true;
+    cmGuard = true;
+    document.addEventListener('pointerup', () => setTimeout(() => { cmGuard = false; }, 60), { once: true });
+    cm.showModal();
+    $('#cmMove').focus();
+  }
+  const closeCardMenu = () => { if (cm.open) cm.close(); cmCtx = null; };
+  cm.addEventListener('click', e => { if (e.target === cm && !cmGuard) closeCardMenu(); });
+  cm.addEventListener('close', () => { cmCtx = null; });
+  $('#cmCancel').addEventListener('click', closeCardMenu);
+  $('#cmBack').addEventListener('click', () => { $('#cmLists').hidden = true; $('#cmMain').hidden = false; $('#cmMove').focus(); });
+  $('#cmMove').addEventListener('click', () => {
+    if (!cmCtx) return;
+    const others = state.lists.filter(l => l.id !== cmCtx.listId);
+    $('#cmListBtns').innerHTML = others.length
+      ? others.map(l => `<button class="menu-item" type="button" data-to="${l.id}">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          <span class="min-w-0 truncate">${esc(l.name)}</span><span class="count">${l.videos.length}</span></button>`).join('')
+      : '<p class="text-sm text-muted px-3 py-2">No hay otras listas. Crea una nueva:</p>';
+    $('#cmMain').hidden = true; $('#cmLists').hidden = false;
+    const first = $('#cmListBtns .menu-item') || $('#cmNew');
+    first.focus();
+  });
+  $('#cmListBtns').addEventListener('click', e => {
+    const b = e.target.closest('[data-to]');
+    if (!b || !cmCtx) return;
+    const { listId, vuid } = cmCtx;
+    closeCardMenu();
+    moveVideo(listId, vuid, b.dataset.to);
+  });
+  $('#cmNew').addEventListener('click', () => {
+    if (!cmCtx) return;
+    const { listId, vuid } = cmCtx;
+    closeCardMenu();
+    const name = (prompt('Nombre de la nueva lista:') || '').trim();
+    if (!name) return;
+    const l = { id: uid(), name, videos: [] };
+    state.lists.push(l);
+    moveVideo(listId, vuid, l.id);
+  });
+  $('#cmSelect').addEventListener('click', () => {
+    if (!cmCtx) return;
+    const { vuid } = cmCtx;
+    closeCardMenu();
+    setSelecting(true);
+    selected.add(vuid);
+    renderList(); renderSelBar();
+  });
+
+  // Pulsación larga (táctil) o clic derecho (ordenador) sobre un vídeo
+  const cancelLongPress = () => {
+    clearTimeout(lpTimer); lpTimer = null;
+    if (lpEl) { lpEl.classList.remove('pressing'); lpEl = null; }
+  };
+  $('#main').addEventListener('pointerdown', e => {
+    if (selecting || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const pl = e.target.closest('ol[data-list] .play');
+    if (!pl) return;
+    cancelLongPress();
+    lpStart = { x: e.clientX, y: e.clientY }; lpEl = pl;
+    pl.classList.add('pressing');
+    const listId = pl.closest('ol[data-list]').dataset.list, vuid = pl.dataset.uid;
+    lpTimer = setTimeout(() => {
+      cancelLongPress();
+      suppressUntil = Date.now() + 800;
+      if (navigator.vibrate) navigator.vibrate(15);
+      openCardMenu(listId, vuid);
+    }, 500);
+  });
+  document.addEventListener('pointermove', e => {
+    if (lpTimer && lpStart && Math.hypot(e.clientX - lpStart.x, e.clientY - lpStart.y) > 10) cancelLongPress();
+  });
+  ['pointerup', 'pointercancel', 'scroll'].forEach(ev => document.addEventListener(ev, () => { if (lpTimer) cancelLongPress(); }, true));
+  $('#main').addEventListener('contextmenu', e => {
+    const pl = e.target.closest('ol[data-list] .play');
+    if (!pl) return;
+    e.preventDefault();
+    if (selecting) return;
+    cancelLongPress();
+    suppressUntil = Date.now() + 800;
+    openCardMenu(pl.closest('ol[data-list]').dataset.list, pl.dataset.uid);
+  });
+
+  /* ---------- Diseños ---------- */
+  const LAYOUT_VIEW = { a: 'list-m', b: 'grid-m', c: 'grid-s' };
+  function applyLayout() {
+    const lay = state.settings.layout;
+    document.body.classList.remove('lay-classic', 'lay-a', 'lay-b', 'lay-c', 'compact');
+    document.body.classList.add('lay-' + lay);
+    if (lay !== 'classic') document.body.classList.add('compact');
+    // Reproducir: en el selector (A), junto al título (B) o en su sitio
+    const play = $('#playAllBtn');
+    if (lay === 'a') $('#pickRow').appendChild(play);
+    else if (lay === 'b') $('#titleRow').appendChild(play);
+    else $('#playHome').appendChild(play);
+    // Buscador: en la cabecera (C) o en la barra de herramientas
+    const sb = $('.searchbox'), tb = $('#toolbar'), amw = $('#actMenuWrap');
+    tb.prepend(amw);
+    if (lay === 'c') $('#hdrSearchSlot').appendChild(sb);
+    else tb.insertBefore(sb, amw.nextSibling);
+    // En A el botón "+" va al final de la fila
+    if (lay === 'a') $('#toolbar').appendChild($('#actMenuWrap'));
+  }
+  function syncProxies() {
+    document.querySelectorAll('[data-proxy]').forEach(p => {
+      const t = $('#' + p.dataset.proxy);
+      if (!t) return;
+      p.hidden = t.hidden;
+      if (t.hasAttribute('aria-pressed')) p.setAttribute('aria-pressed', t.getAttribute('aria-pressed'));
+      if (p.closest('.bottombar') && t.hasAttribute('aria-expanded')) p.setAttribute('aria-expanded', t.getAttribute('aria-expanded'));
+    });
+  }
+  document.addEventListener('click', e => {
+    const p = e.target.closest('[data-proxy]');
+    if (!p) return;
+    const t = $('#' + p.dataset.proxy);
+    if (t) t.click();
+    setActMenu(false);
+    setTimeout(syncProxies, 0);
+  });
+  // Menú "+" de acciones (A)
+  const actBtn = $('#actMenuBtn'), actMenu = $('#actMenu');
+  function setActMenu(open) {
+    actMenu.hidden = !open;
+    actBtn.setAttribute('aria-expanded', String(open));
+    if (open) { syncProxies(); const first = actMenu.querySelector('.menu-item:not([hidden])'); if (first) first.focus(); }
+  }
+  actBtn.addEventListener('click', e => { e.stopPropagation(); setActMenu(actMenu.hidden); });
+  document.addEventListener('click', e => { if (!actMenu.hidden && !e.target.closest('#actMenuWrap')) setActMenu(false); });
+  actMenu.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); setActMenu(false); actBtn.focus(); } });
+  // Hoja para elegir lista (A)
+  const listSheet = $('#listSheet');
+  function openListSheet() {
+    const total = state.lists.reduce((a, l) => a + l.videos.length, 0);
+    const row = (id, name, n, on) => `<button class="menu-item" type="button" data-pick="${id}"${on ? ' aria-current="true" style="background:color-mix(in srgb, var(--accent) 10%, transparent)"' : ''}>
+        <span class="min-w-0 truncate">${esc(name)}</span><span class="count">${n}</span></button>`;
+    const cur = l => !isAll() && active() && active().id === l.id;
+    $('#listSheetItems').innerHTML =
+      (state.lists.length ? row(ALL, 'Todas las listas', total, isAll()) : '') +
+      state.categories.map(c => {
+        const ls = catLists(c), open = openCats.has(c.id);
+        const hasActive = ls.some(cur);
+        return `<button class="menu-item cat-toggle" type="button" data-tog="${c.id}" aria-expanded="${open}"${hasActive && !open ? ' style="box-shadow:inset 0 0 0 1.5px var(--accent)"' : ''}>
+            ${FOLDER_SVG}<span class="min-w-0 truncate" style="font-weight:700">${esc(c.name)}</span><span class="count">${ls.length} lista${ls.length === 1 ? '' : 's'}</span>${CHEV_SVG}</button>` +
+          (open ? (ls.length ? ls.map(l => row(l.id, l.name, l.videos.length, cur(l)).replace('class="menu-item"', 'class="menu-item in-cat"')).join('') : '<p class="text-sm text-muted" style="padding:4px 28px 8px">Sin listas</p>') : '');
+      }).join('') +
+      (state.categories.length && rootLists().length ? '<p class="sheet-label">Sin categoría</p>' : '') +
+      rootLists().map(l => row(l.id, l.name, l.videos.length, cur(l))).join('') +
+      `<button class="menu-item" type="button" data-pick="__new"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva lista…</button>` +
+      `<button class="menu-item" type="button" data-pick="__newcat">${FOLDER_SVG}Nueva categoría…</button>`;
+    if (!listSheet.open) listSheet.showModal();
+    const focusEl = $('#listSheetItems [aria-current="true"]') || $('#listSheetItems .menu-item');
+    if (focusEl) focusEl.focus();
+  }
+  $('#listPicker').addEventListener('click', openListSheet);
+  $('#lsCancel').addEventListener('click', () => listSheet.close());
+  listSheet.addEventListener('click', e => { if (e.target === listSheet) listSheet.close(); });
+  $('#listSheetItems').addEventListener('click', e => {
+    if (Date.now() < suppressUntil) return;
+    const t = e.target.closest('[data-tog]');
+    if (t) {
+      toggleCat(t.dataset.tog);
+      openListSheet();
+      const again = $(`#listSheetItems [data-tog="${t.dataset.tog}"]`); if (again) again.focus();
+      return;
+    }
+    const b = e.target.closest('[data-pick]');
+    if (!b) return;
+    listSheet.close();
+    if (b.dataset.pick === '__new') { newList(); return; }
+    if (b.dataset.pick === '__newcat') { if (newCategory()) render(); return; }
+    if (selecting) setSelecting(false);
+    state.activeId = b.dataset.pick; save(); render(); $('#addMsg').textContent = '';
+  });
+
+  const setDlg = $('#settingsDialog');
+  $('#settingsBtn').addEventListener('click', () => {
+    $('#optNoDup').checked = state.settings.noDup;
+    renderCatAdmin();
+    document.querySelectorAll('input[name="layout"]').forEach(r => { r.checked = r.value === state.settings.layout; });
+    setDlg.showModal();
+  });
+  document.querySelectorAll('input[name="layout"]').forEach(r => r.addEventListener('change', () => {
+    if (!r.checked) return;
+    state.settings.layout = r.value;
+    if (LAYOUT_VIEW[r.value]) state.view = LAYOUT_VIEW[r.value];
+    save(); applyLayout(); render();
+  }));
+  $('#settingsClose').addEventListener('click', () => setDlg.close());
+  setDlg.addEventListener('click', e => { if (e.target === setDlg) setDlg.close(); });
+  $('#optNoDup').addEventListener('change', e => {
+    state.settings.noDup = e.target.checked; save();
+    toast(e.target.checked ? 'No se añadirán vídeos repetidos.' : 'Ahora se pueden repetir vídeos en una lista.');
+  });
+
+  $('#addToggle').addEventListener('click', () => {
+    addOpen = $('#addForm').hidden;
+    if (!addOpen) $('#addMsg').textContent = '';
+    renderList();
+    if (addOpen) $('#addInput').focus();
+  });
+
+  /* ---------- Opciones de lista o categoría (pulsación larga en el selector) ---------- */
+  const im = $('#itemMenu');
+  let imCtx = null, imGuard = false;
+  const groupOf = l => state.lists.filter(x => (catOf(x) ? x.catId : null) === (catOf(l) ? l.catId : null));
+  function imRefresh() {
+    if (!imCtx) return;
+    let name, list, pos, len;
+    if (imCtx.type === 'cat') {
+      const c = state.categories.find(x => x.id === imCtx.id); if (!c) return im.close();
+      name = c.name; pos = state.categories.indexOf(c); len = state.categories.length;
+      $('#imIcon').innerHTML = FOLDER_SVG;
+    } else {
+      const l = getList(imCtx.id); if (!l) return im.close();
+      name = l.name; list = groupOf(l); pos = list.indexOf(l); len = list.length;
+      $('#imIcon').innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>';
+    }
+    $('#imTitle').textContent = (imCtx.type === 'cat' ? 'Categoría · ' : 'Lista · ') + name;
+    $('#imUp').disabled = pos <= 0;
+    $('#imDown').disabled = pos >= len - 1;
+    $('#imCat').hidden = imCtx.type === 'cat';
+  }
+  function openItemMenu(type, id) {
+    if (im.open) return;
+    imCtx = { type, id };
+    imRefresh();
+    imGuard = true;
+    document.addEventListener('pointerup', () => setTimeout(() => { imGuard = false; }, 60), { once: true });
+    im.showModal();
+    $('#imRename').focus();
+  }
+  function refreshAll() { render(); if ($('#listSheet').open) openListSheet(); imRefresh(); }
+  function moveItem(dir) {
+    if (!imCtx) return;
+    if (imCtx.type === 'cat') {
+      const arr = state.categories, i = arr.findIndex(c => c.id === imCtx.id), j = i + dir;
+      if (i < 0 || j < 0 || j >= arr.length) return;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    } else {
+      const l = getList(imCtx.id), g = groupOf(l), gi = g.indexOf(l), other = g[gi + dir];
+      if (!other) return;
+      const a = state.lists.indexOf(l), b = state.lists.indexOf(other);
+      [state.lists[a], state.lists[b]] = [state.lists[b], state.lists[a]];
+    }
+    save(); refreshAll();
+  }
+  im.addEventListener('click', e => { if (e.target === im && !imGuard) im.close(); });
+  $('#imCancel').addEventListener('click', () => im.close());
+  $('#imUp').addEventListener('click', () => moveItem(-1));
+  $('#imDown').addEventListener('click', () => moveItem(1));
+  $('#imRename').addEventListener('click', () => {
+    if (!imCtx) return;
+    if (imCtx.type === 'cat') renameCategory(state.categories.find(c => c.id === imCtx.id));
+    else renameList(imCtx.id);
+    refreshAll();
+  });
+  $('#imDelete').addEventListener('click', () => {
+    if (!imCtx) return;
+    const { type, id } = imCtx;
+    im.close();
+    if (type === 'cat') deleteCategory(state.categories.find(c => c.id === id));
+    else deleteList(id);
+    if ($('#listSheet').open) openListSheet();
+  });
+  $('#imCat').addEventListener('click', () => {
+    if (!imCtx || imCtx.type !== 'list') return;
+    const id = imCtx.id;
+    im.close();
+    openCatSheet(id);
+  });
+  // Pulsación larga o clic derecho sobre una lista o categoría del selector
+  const ITEM_SEL = '#tabs [data-lid], #tabs [data-cid], #listSheetItems [data-tog], #listSheetItems [data-pick]';
+  const itemOf = el => {
+    if (el.dataset.lid) return ['list', el.dataset.lid];
+    if (el.dataset.cid) return ['cat', el.dataset.cid];
+    if (el.dataset.tog) return ['cat', el.dataset.tog];
+    if (el.dataset.pick && getList(el.dataset.pick)) return ['list', el.dataset.pick];
+    return null;
+  };
+  let lp2Timer = null, lp2Start = null, lp2El = null;
+  const cancelLp2 = () => { clearTimeout(lp2Timer); lp2Timer = null; if (lp2El) { lp2El.classList.remove('pressing'); lp2El = null; } };
+  document.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const el = e.target.closest(ITEM_SEL);
+    const it = el && itemOf(el);
+    if (!it) return;
+    cancelLp2();
+    lp2Start = { x: e.clientX, y: e.clientY }; lp2El = el;
+    el.classList.add('pressing');
+    lp2Timer = setTimeout(() => {
+      cancelLp2();
+      suppressUntil = Date.now() + 800;
+      if (navigator.vibrate) navigator.vibrate(15);
+      openItemMenu(it[0], it[1]);
+    }, 500);
+  });
+  document.addEventListener('pointermove', e => {
+    if (lp2Timer && lp2Start && Math.hypot(e.clientX - lp2Start.x, e.clientY - lp2Start.y) > 10) cancelLp2();
+  });
+  ['pointerup', 'pointercancel', 'scroll'].forEach(ev => document.addEventListener(ev, () => { if (lp2Timer) cancelLp2(); }, true));
+  document.addEventListener('contextmenu', e => {
+    const el = e.target.closest(ITEM_SEL);
+    const it = el && itemOf(el);
+    if (!it) return;
+    e.preventDefault();
+    cancelLp2();
+    suppressUntil = Date.now() + 800;
+    openItemMenu(it[0], it[1]);
+  });
+
+  const setQuery = q => {
+    query = q;
+    $('#searchClear').hidden = !q;
+    renderList(); renderSelBar();
+  };
+  $('#searchInput').addEventListener('input', e => setQuery(e.target.value));
+  const clearSearch = () => { $('#searchInput').value = ''; setQuery(''); $('#searchInput').focus(); };
+  $('#searchClear').addEventListener('click', clearSearch);
+  $('#noResultsClear').addEventListener('click', clearSearch);
+  $('#searchInput').addEventListener('keydown', e => { if (e.key === 'Escape' && query) { e.preventDefault(); clearSearch(); } });
+  $('#durHintBtn').addEventListener('click', () => openKeyDialog());
+  $('#dataHintBtn').addEventListener('click', async e => {
+    const vids = (e.currentTarget.dataset.vids || '').split(',').filter(Boolean);
+    if (!vids.length) return;
+    e.currentTarget.disabled = true;
+    keyErrorShown = true;
+    const ok = await fetchDetails(vids);
+    $('#dataHintBtn').disabled = false;
+    toast(ok ? 'Datos de YouTube cargados.' : `No se han podido cargar: ${apiError}.`);
+  });
+  $('#viewSel').addEventListener('change', e => { state.view = e.target.value; save(); renderList(); });
+  $('#sortSel').addEventListener('change', e => {
+    const val = e.target.value;
+    if (API_SORTS.includes(val) && !state.apiKey) {
+      e.target.value = state.sort;
+      pendingSort = val;
+      openKeyDialog();
+      return;
+    }
+    state.sort = val; save(); render();
+  });
+  $('#addForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const input = $('#addInput');
+    if (!input.value.trim()) { $('#addMsg').textContent = 'Pega primero un enlace de YouTube.'; input.focus(); return; }
+    addVideos(input.value).then(ok => { if (ok) input.value = ''; });
+  });
+  $('#addInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#addForm').requestSubmit(); }
+  });
+  $('#addInput').addEventListener('paste', () => {
+    setTimeout(() => { const t = $('#addInput'); t.rows = Math.min(6, Math.max(1, t.value.split('\n').length)); }, 0);
+  });
+  $('#playAllBtn').addEventListener('click', () => {
+    const l = active();
+    if (!l || !l.videos.length) return;
+    if (!visible(l).length) return;
+    openInYouTube(l.id, 0);
+    if (visible(l).length > 50) toast('YouTube admite hasta 50 vídeos por lista: se han abierto los 50 primeros.');
+  });
+  $('#renameBtn').addEventListener('click', () => renameList());
+  $('#deleteListBtn').addEventListener('click', () => deleteList());
+  $('#firstListBtn').addEventListener('click', newList);
+  const moreBtn = $('#moreBtn'), moreMenu = $('#moreMenu');
+  const items = () => [...moreMenu.querySelectorAll('.menu-item')];
+  function setMenu(open, focusFirst) {
+    moreMenu.hidden = !open;
+    moreBtn.setAttribute('aria-expanded', String(open));
+    if (open && focusFirst) items()[0].focus();
+  }
+  moreBtn.addEventListener('click', () => setMenu(moreMenu.hidden, true));
+  moreMenu.addEventListener('click', e => { if (e.target.closest('.menu-item')) setMenu(false); });
+  document.addEventListener('click', e => { if (!moreMenu.hidden && !e.target.closest('.menu-wrap')) setMenu(false); });
+  moreMenu.addEventListener('keydown', e => {
+    const list = items(), i = list.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); list[(i + 1) % list.length].focus(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); list[(i - 1 + list.length) % list.length].focus(); }
+    if (e.key === 'Escape') { e.preventDefault(); setMenu(false); moreBtn.focus(); }
+  });
+  $('#keyBtn').addEventListener('click', openKeyDialog);
+  $('#exportBtn').addEventListener('click', exportData);
+  $('#importBtn').addEventListener('click', () => $('#importFile').click());
+  $('#importFile').addEventListener('change', e => { const f = e.target.files[0]; if (f) importData(f); e.target.value = ''; });
+
+  /* ---------- Recibir enlaces compartidos desde otras apps ---------- */
+  const shareSheet = $('#shareSheet');
+  let sharedText = '';
+  function extractShared(params) {
+    const raw = [params.get('url'), params.get('text'), params.get('title')].filter(Boolean).join(' ');
+    const found = (raw.match(/https?:\/\/[^\s"'<>]+/g) || []).filter(u => parseInput(u));
+    const ids = raw.split(/\s+/).filter(w => !/^https?:/i.test(w) && parseInput(w) && /^(PL|UU|OL)[\w-]{10,}$/.test(w));
+    return [...new Set([...found, ...ids])];
+  }
+  function openShareSheet(links) {
+    sharedText = links.join('\n');
+    $('#ssWhat').textContent = links.length === 1 ? links[0] : `${links.length} enlaces de YouTube`;
+    const row = (l, inCat) => `<button class="menu-item${inCat ? ' in-cat' : ''}" type="button" data-share="${l.id}">
+        <span class="min-w-0 truncate">${esc(l.name)}</span><span class="count">${l.videos.length}</span></button>`;
+    $('#shareSheetItems').innerHTML =
+      state.categories.map(c => catLists(c).length ? `<p class="sheet-label">${FOLDER_SVG}${esc(c.name)}</p>` + catLists(c).map(l => row(l, true)).join('') : '').join('') +
+      (state.categories.length && rootLists().length ? '<p class="sheet-label">Sin categoría</p>' : '') +
+      rootLists().map(l => row(l, false)).join('') +
+      `<button class="menu-item" type="button" data-share="__new"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva lista…</button>`;
+    shareSheet.showModal();
+    const first = $('#shareSheetItems .menu-item'); if (first) first.focus();
+  }
+  $('#ssCancel').addEventListener('click', () => shareSheet.close());
+  shareSheet.addEventListener('click', e => { if (e.target === shareSheet) shareSheet.close(); });
+  $('#shareSheetItems').addEventListener('click', async e => {
+    const b = e.target.closest('[data-share]');
+    if (!b) return;
+    shareSheet.close();
+    let id = b.dataset.share;
+    if (id === '__new') {
+      const name = (prompt('Nombre de la nueva lista:') || '').trim();
+      if (!name) return;
+      const l = { id: uid(), name, videos: [] };
+      state.lists.push(l); id = l.id;
+    }
+    if (selecting) setSelecting(false);
+    state.activeId = id; save(); render();
+    await addVideos(sharedText, id);
+    toast(lastAddMsg || 'Hecho.');
+  });
+  function handleShare() {
+    const params = new URLSearchParams(location.search);
+    if (!params.has('url') && !params.has('text') && !params.has('title')) return;
+    history.replaceState(null, '', location.pathname);
+    const links = extractShared(params);
+    if (!links.length) { toast('Lo que has compartido no contiene un enlace de YouTube.'); return; }
+    if (!state.lists.length) state.lists.push({ id: uid(), name: 'Mi lista', videos: [] });
+    openShareSheet(links);
+  }
+
+  /* ---------- Instalar como app y funcionar sin conexión ---------- */
+  let installEvent = null;
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvent = e; $('#installBtn').hidden = false; });
+  window.addEventListener('appinstalled', () => { installEvent = null; $('#installBtn').hidden = true; toast('Videoteca instalada. Ya la tienes entre tus aplicaciones.'); });
+  $('#installBtn').addEventListener('click', async () => {
+    if (!installEvent) return;
+    installEvent.prompt();
+    await installEvent.userChoice.catch(() => {});
+    installEvent = null; $('#installBtn').hidden = true;
+  });
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  }
+
+  applyLayout();
+  render();
+  handleShare();
+  // Completa la información que falte de otras sesiones
+  const all = state.lists.flatMap(l => l.videos);
+  if (state.apiKey) {
+    const need = [...new Set(all.filter(v => !v.detailsOk).map(v => v.vid))];
+    if (need.length) fetchDetails(need).then(ok => { if (!ok) queueTitles([...new Set(all.filter(v => !v.titleOk).map(v => v.vid))]); });
+  } else {
+    queueTitles([...new Set(all.filter(v => !v.titleOk).map(v => v.vid))]);
+  }
+})();
+</script>
+</body>
+</html>

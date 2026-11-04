@@ -38,11 +38,16 @@ tailwind.config = {
     padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
   }
   @media (prefers-color-scheme: dark){
-    :root{
+    :root:not([data-theme="light"]){
       --bg:#121722; --surface:#1B2231; --ink:#E8ECF4; --muted:#9BA5B7; --line:#2D3648;
       --accent:#7487FF; --accent-ink:#0D1120; --live:#FFC23A; --danger:#FF6B7D;
       color-scheme: dark;
     }
+  }
+  :root[data-theme="dark"]{
+    --bg:#121722; --surface:#1B2231; --ink:#E8ECF4; --muted:#9BA5B7; --line:#2D3648;
+    --accent:#7487FF; --accent-ink:#0D1120; --live:#FFC23A; --danger:#FF6B7D;
+    color-scheme: dark;
   }
   *,*::before,*::after{box-sizing:inherit}
   [hidden]{display:none !important}
@@ -267,6 +272,113 @@ tailwind.config = {
   body.lay-c.selecting .bottombar, body.lay-c.selecting #playAllBtn{display:none}
   body.lay-c.selecting #toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 
+  /* Visto, favoritos, notas */
+  .fav-badge{position:absolute; left:6px; top:6px; width:24px; height:24px; border-radius:50%; display:grid; place-items:center;
+             background:var(--live); color:#1A1400; font-size:14px; line-height:1; box-shadow:0 1px 4px rgba(0,0,0,.25)}
+  .seen-badge{position:absolute; left:8px; bottom:8px; padding:3px 7px; border-radius:6px; background:rgba(10,14,24,.82); color:#fff; font:700 11.5px Figtree,sans-serif}
+  .card.is-seen .pos{display:none}
+  .card.is-seen .thumb img.ok{opacity:.55}
+  .card.is-seen .title{color:var(--muted)}
+  .iflags{display:none; margin-right:6px; gap:4px}
+  .if-fav{color:#C98A00} .if-seen{color:var(--accent)}
+  .view-compact .iflags{display:inline-flex}
+  .meta.extra{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  body.selecting .fav-badge{display:none}
+  .view-mosaic .seen-badge{font-size:0; padding:2px 4px; left:3px; bottom:3px}
+  .view-mosaic .seen-badge::before{content:"✓"; font-size:10px}
+  .view-grid-s .seen-badge{font-size:0; padding:2px 5px}
+  .view-grid-s .seen-badge::before{content:"✓"; font-size:11px}
+
+  /* Ordenar a mano */
+  .drag{display:none}
+  body.reordering .drag{display:grid; position:absolute; z-index:3; top:50%; right:6px; transform:translateY(-50%); width:44px; height:44px; place-items:center;
+                        border-radius:12px; background:var(--surface); color:var(--ink); border:1.5px solid var(--line); touch-action:none; cursor:grab; box-shadow:0 2px 8px rgba(0,0,0,.15)}
+  body.reordering .view-grid-l .drag, body.reordering .view-grid-m .drag, body.reordering .view-grid-s .drag, body.reordering .view-mosaic .drag{top:6px; right:6px; transform:none; width:40px; height:40px}
+  body.reordering .remove, body.reordering .fav-badge{display:none}
+  body.reordering .card .play{cursor:default}
+  .card.dragging{z-index:20; position:relative; opacity:.92; filter:drop-shadow(0 10px 22px rgba(0,0,0,.28)); transition:none}
+  .card.dragging .drag{cursor:grabbing; background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+  body.reordering #toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+  body.reordering .bottombar, body.reordering #playAllBtn{display:none !important}
+
+  /* Esqueleto de carga */
+  .thumb{background:linear-gradient(100deg, var(--line) 30%, color-mix(in srgb, var(--line) 45%, var(--surface)) 50%, var(--line) 70%);
+         background-size:220% 100%; animation:shimmer 1.3s linear infinite}
+  .thumb:has(img.ok){animation:none; background:var(--line)}
+  .thumb img{opacity:0; transition:opacity .3s}
+  .thumb img.ok{opacity:1}
+  .thumb img.err{opacity:0 !important}
+  .title.pending{color:transparent !important; border-radius:6px; min-height:1.1em; width:85%;
+                 background:linear-gradient(100deg, var(--line) 30%, color-mix(in srgb, var(--line) 45%, var(--surface)) 50%, var(--line) 70%);
+                 background-size:220% 100%; animation:shimmer 1.3s linear infinite}
+  @keyframes shimmer{from{background-position:120% 0} to{background-position:-120% 0}}
+
+  /* Transiciones */
+  dialog.kd[open]{animation:dlgIn .2s ease-out}
+  dialog.sheet[open]{animation:sheetIn .26s cubic-bezier(.2,.8,.2,1)}
+  dialog[open]::backdrop{animation:fadeIn .2s ease-out}
+  .menu:not([hidden]){animation:menuIn .16s ease-out; transform-origin:top right}
+  .toast{animation:toastIn .22s cubic-bezier(.2,.8,.2,1)}
+  .selbar:not([hidden]){animation:toastIn .22s cubic-bezier(.2,.8,.2,1)}
+  .enter .card{animation:cardIn .32s cubic-bezier(.2,.8,.2,1) both; animation-delay:calc(var(--i, 0) * 22ms)}
+  .card.leaving{animation:cardOut .18s ease-in forwards}
+  #addForm:not([hidden]){animation:fadeIn .2s ease-out}
+  @keyframes dlgIn{from{opacity:0; transform:scale(.96)} to{opacity:1; transform:none}}
+  @keyframes sheetIn{from{opacity:.4; transform:translateY(40px)} to{opacity:1; transform:none}}
+  @keyframes fadeIn{from{opacity:0} to{opacity:1}}
+  @keyframes menuIn{from{opacity:0; transform:scale(.96) translateY(-4px)} to{opacity:1; transform:none}}
+  @keyframes toastIn{from{opacity:0; transform:translate(-50%, 14px)} to{opacity:1; transform:translate(-50%, 0)}}
+  @keyframes cardIn{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
+  @keyframes cardOut{to{opacity:0; transform:scale(.92)}}
+  .toast{position:relative}
+  #toast .toast{animation-name:toastIn2}
+  @keyframes toastIn2{from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:none}}
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important}
+  }
+
+  /* Cabecera que se encoge al bajar */
+  .wrap{--gut:16px}
+  @media (min-width:640px){ .wrap{--gut:24px} }
+  @media (min-width:1024px){ .wrap{--gut:32px} }
+  #appHeader{position:fixed; top:0; left:0; right:0; z-index:30; background:var(--bg); margin:0;
+             padding-inline:max(var(--gut), calc((100vw - 80rem) / 2 + var(--gut)));
+             transition:padding .2s ease, box-shadow .2s ease}
+  #appTitle{transition:font-size .2s ease}
+  body.shrunk #appHeader{padding-top:8px !important; padding-bottom:8px !important; box-shadow:0 1px 0 var(--line), 0 6px 16px rgba(0,0,0,.06)}
+  body.shrunk #appTitle{font-size:24px !important}
+  body.shrunk:not(.compact) #appHeader{align-items:center}
+  body.lay-b .side{top:calc(var(--hdr-h, 60px) + 8px)}
+
+  /* Color y emoji de listas y categorías */
+  .lemo{flex:none; font-size:16px; line-height:1}
+  .tab.has-color{box-shadow:inset 4px 0 0 var(--lc)}
+  body.lay-b .tab.has-color{box-shadow:none}
+  body.lay-b .tab.has-color .ini{background:var(--lc); color:#fff}
+  body.lay-b .tab.cat.has-color .ini{background:transparent; border-color:var(--lc); color:var(--lc)}
+  body.lay-c .tab.has-color{box-shadow:inset 0 -3px 0 var(--lc)}
+  .tab .ini.emo{font-size:20px; text-transform:none}
+  .cdot{width:10px; height:10px; border-radius:50%; flex:none; background:var(--lc)}
+  .swatch{width:38px; height:38px; border-radius:50%; border:3px solid transparent; cursor:pointer; flex:none}
+  .swatch[aria-pressed="true"]{border-color:var(--ink); box-shadow:inset 0 0 0 2px var(--surface)}
+  .swatch.none{background:var(--surface); border:1.5px dashed var(--muted)}
+  .swatch.none[aria-pressed="true"]{border:3px solid var(--ink)}
+  .emo-btn{width:42px; height:42px; border-radius:10px; border:1.5px solid var(--line); background:var(--surface); font-size:21px; cursor:pointer}
+  .emo-btn[aria-pressed="true"]{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, var(--surface))}
+
+  /* Selector desplegable (A) a pantalla completa */
+  dialog#listSheet{width:100%; max-width:100%; height:100dvh; max-height:100dvh; margin:0; border-radius:0; padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+  dialog#listSheet[open]{display:flex; flex-direction:column}
+  #listSheet .ls-head{display:flex; align-items:center; gap:8px; padding:10px 8px 8px 20px; border-bottom:1.5px solid var(--line)}
+  #listSheet .cm-body{flex:1; max-height:none; width:100%; max-width:720px; margin:0 auto; padding:8px 10px}
+  #listSheet .menu-item{min-height:52px; font-size:16px}
+  #listSheet .menu-item .count{font-size:13.5px}
+  #listSheet .ls-foot{width:100%; max-width:720px; margin:0 auto; padding:8px 10px 12px; display:flex; gap:8px}
+  #listSheet .ls-foot .btn{flex:1}
+
+  /* Aviso de copia de seguridad */
+  .hintbox{border:2px solid var(--live); background:color-mix(in srgb, var(--live) 10%, var(--surface)); border-radius:14px; padding:12px 14px; margin-bottom:16px}
+
   /* Buscador */
   .searchbox{position:relative; flex:1 1 100%}
   .searchbox > svg{position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none}
@@ -414,7 +526,7 @@ tailwind.config = {
 </style>
 </head>
 <body class="min-h-screen">
-<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-24">
+<div class="wrap mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-24">
 
   <header id="appHeader" class="flex flex-wrap items-end justify-between gap-4 pt-6 sm:pt-10 pb-5">
     <div>
@@ -443,6 +555,10 @@ tailwind.config = {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
             Exportar
           </button>
+          <button class="menu-item" role="menuitem" id="shareBkBtn" type="button" hidden>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13"/></svg>
+            Enviar copia (Drive, correo…)
+          </button>
           <button class="menu-item" role="menuitem" id="importBtn" title="Añadir listas desde una copia">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m0 0L7 8m5-5 5 5M4 19h16"/></svg>
             Importar
@@ -460,6 +576,7 @@ tailwind.config = {
       <input type="file" id="importFile" accept="application/json,.json" hidden>
     </div>
   </header>
+  <div id="hdrSpacer" aria-hidden="true"></div>
 
   <div class="layout">
   <aside class="side" aria-labelledby="sideTitle">
@@ -504,6 +621,9 @@ tailwind.config = {
             <button class="btn ico" id="catBtn" type="button" aria-label="Categoría de la lista" title="Categoría de la lista">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
             </button>
+            <button class="btn ico" id="reorderBtn" type="button" aria-label="Ordenar a mano" title="Ordenar a mano">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01"/></svg>
+            </button>
             <button class="btn ico danger" id="deleteListBtn" type="button" aria-label="Eliminar lista" title="Eliminar lista">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>
             </button>
@@ -541,6 +661,10 @@ tailwind.config = {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
               Categoría de la lista
             </button>
+            <button class="menu-item" role="menuitem" type="button" data-proxy="reorderBtn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01"/></svg>
+              Ordenar a mano
+            </button>
             <button class="menu-item" role="menuitem" type="button" data-proxy="deleteListBtn">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
               Eliminar lista
@@ -575,6 +699,18 @@ tailwind.config = {
             </select>
           </span>
         </label>
+        <label class="sel" title="Mostrar"><span class="sr-only">Mostrar</span>
+          <span class="selwrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>
+            <select id="filterSel">
+              <option value="all">Todos los vídeos</option>
+              <option value="unseen">No vistos</option>
+              <option value="seen">Vistos</option>
+              <option value="fav">Favoritos</option>
+              <option value="note">Con nota</option>
+            </select>
+          </span>
+        </label>
         <label class="sel" title="Ordenar por"><span class="sr-only">Ordenar por</span>
           <span class="selwrap">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg>
@@ -603,6 +739,14 @@ tailwind.config = {
         <p class="mt-1">Copia el enlace de un vídeo o de una lista de YouTube (botón Compartir) y pégalo en el recuadro de arriba (botón de enlace con +).</p>
       </div>
 
+      <div id="backupHint" class="hintbox" hidden>
+        <p class="text-[14.5px] leading-relaxed" id="backupHintText"></p>
+        <div class="flex flex-wrap gap-2 mt-2">
+          <button type="button" class="btn sm" id="bkSave">Guardar copia</button>
+          <button type="button" class="btn sm" id="bkShare" hidden>Enviar a Drive…</button>
+          <button type="button" class="btn sm ghost" id="bkLater">Ahora no</button>
+        </div>
+      </div>
       <div id="dataHint" class="mb-4 rounded-xl p-3 text-[14px] leading-relaxed" style="border:2px solid var(--live); background:color-mix(in srgb, var(--live) 10%, var(--surface))" hidden>
         <p id="dataHintText"></p>
         <button type="button" id="dataHintBtn" class="btn sm mt-2">Cargar datos ahora</button>
@@ -687,6 +831,23 @@ tailwind.config = {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
     </div>
+    <section class="mt-5" aria-labelledby="themeTitle">
+      <p id="themeTitle" class="font-semibold text-[15.5px] mb-2">Tema</p>
+      <span class="selwrap"><select id="optTheme" aria-labelledby="themeTitle" style="padding-left:13px">
+        <option value="auto">Automático (como el móvil)</option>
+        <option value="light">Claro</option>
+        <option value="dark">Oscuro</option>
+      </select></span>
+    </section>
+    <section class="mt-5" aria-labelledby="bkTitle">
+      <p id="bkTitle" class="font-semibold text-[15.5px] mb-2">Copia de seguridad</p>
+      <span class="selwrap"><select id="optBackup" aria-labelledby="bkTitle" style="padding-left:13px">
+        <option value="7">Recordarme hacer copia cada semana</option>
+        <option value="30">Recordarme hacer copia cada mes</option>
+        <option value="0">No recordármelo</option>
+      </select></span>
+      <p id="bkLast" class="text-muted text-[13.5px] mt-2"></p>
+    </section>
     <section class="mt-5" aria-labelledby="openTitle">
       <p id="openTitle" class="font-semibold text-[15.5px] mb-2">Al abrir un vídeo</p>
       <span class="selwrap"><select id="optOpenWith" aria-labelledby="openTitle" style="padding-left:13px"></select></span>
@@ -716,6 +877,13 @@ tailwind.config = {
       </span>
     </label>
     <label class="mt-5 flex items-start gap-3 rounded-xl p-4 cursor-pointer" style="border:1.5px solid var(--line)">
+      <input type="checkbox" id="optMarkSeen" class="mt-0.5 flex-none" style="width:22px;height:22px;accent-color:var(--accent)">
+      <span>
+        <span class="block font-semibold text-[15.5px]">Marcar como visto al abrir</span>
+        <span class="block text-muted text-[14px] mt-1 leading-relaxed">El vídeo que tocas para abrir en YouTube queda marcado como visto. También puedes marcarlo a mano manteniéndolo pulsado.</span>
+      </span>
+    </label>
+    <label class="mt-5 flex items-start gap-3 rounded-xl p-4 cursor-pointer" style="border:1.5px solid var(--line)">
       <input type="checkbox" id="optNoDup" class="mt-0.5 flex-none" style="width:22px;height:22px;accent-color:var(--accent)">
       <span>
         <span class="block font-semibold text-[15.5px]">No añadir vídeos repetidos</span>
@@ -726,10 +894,17 @@ tailwind.config = {
 </dialog>
 
 <dialog id="listSheet" class="sheet" aria-labelledby="lsTitle">
-  <div class="grab" aria-hidden="true"></div>
-  <p id="lsTitle" class="font-display font-extrabold text-xl px-5 pt-2 pb-1">Listas</p>
+  <div class="ls-head">
+    <p id="lsTitle" class="font-display font-extrabold text-2xl flex-1">Listas</p>
+    <button class="btn ghost icon-btn" type="button" id="lsCancel" aria-label="Cerrar">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </div>
   <div class="cm-body" id="listSheetItems"></div>
-  <div class="px-2 pb-3"><button class="btn w-full" type="button" id="lsCancel">Cancelar</button></div>
+  <div class="ls-foot">
+    <button class="btn" type="button" id="lsNewList">+ Nueva lista</button>
+    <button class="btn" type="button" id="lsNewCat">+ Nueva categoría</button>
+  </div>
 </dialog>
 
 <nav id="bottomBar" class="bottombar" aria-label="Acciones de la lista">
@@ -780,6 +955,7 @@ tailwind.config = {
     <button class="menu-item" type="button" id="imRename"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4z"/></svg>Renombrar</button>
     <button class="menu-item" type="button" id="imUp"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Subir</button>
     <button class="menu-item" type="button" id="imDown"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>Bajar</button>
+    <button class="menu-item" type="button" id="imStyle"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.5-1 1-2s0-2 1.5-2H17a4 4 0 0 0 4-4c0-5-4-10-9-10zM7.5 11h.01M10 7.5h.01M14.5 7.5h.01"/></svg>Color y emoji</button>
     <button class="menu-item" type="button" id="imCat"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Cambiar de categoría</button>
     <button class="menu-item" type="button" id="imDelete" style="color:var(--danger)"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Eliminar</button>
     <button class="btn w-full mt-2" type="button" id="imCancel">Cerrar</button>
@@ -806,6 +982,54 @@ tailwind.config = {
   <div class="px-2 pb-3"><button class="btn w-full" type="button" id="bsCancel">Cancelar</button></div>
 </dialog>
 
+<dialog id="noteDlg" class="kd" aria-labelledby="noteTitle">
+  <form method="dialog" class="p-6">
+    <p id="noteTitle" class="font-display font-extrabold text-xl">Nota y minuto de inicio</p>
+    <p id="noteVideo" class="text-muted text-[14px] mt-1"></p>
+    <label for="noteText" class="block mt-4 text-sm font-semibold text-muted">Nota</label>
+    <textarea id="noteText" class="field mt-1" rows="3" maxlength="500" placeholder="Por ejemplo: la receta empieza en la segunda parte"></textarea>
+    <label for="noteStart" class="block mt-4 text-sm font-semibold text-muted">Empezar en (minutos:segundos)</label>
+    <input id="noteStart" class="field mt-1" inputmode="numeric" placeholder="Por ejemplo 1:30" autocomplete="off" style="max-width:180px">
+    <p id="noteErr" class="text-sm mt-2" style="color:var(--danger)" hidden>Escribe el tiempo como 1:30 o 90.</p>
+    <div class="flex justify-end gap-2 mt-5">
+      <button class="btn" value="cancel" type="submit">Cancelar</button>
+      <button class="btn primary" value="ok" type="submit" id="noteOk">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="styleDlg" class="kd" aria-labelledby="styleTitle">
+  <form method="dialog" class="p-6">
+    <p id="styleTitle" class="font-display font-extrabold text-xl"></p>
+    <p class="text-sm font-semibold text-muted mt-4 mb-2">Emoji</p>
+    <div class="flex items-center gap-2">
+      <label for="styleEmoji" class="sr-only">Emoji</label>
+      <input id="styleEmoji" class="field" style="max-width:90px; font-size:22px; text-align:center" maxlength="8" autocomplete="off" placeholder="🙂">
+      <span class="text-muted text-[13.5px]">Escribe uno con el teclado o elige abajo.</span>
+    </div>
+    <div id="styleEmojis" class="flex flex-wrap gap-2 mt-3"></div>
+    <p class="text-sm font-semibold text-muted mt-5 mb-2">Color</p>
+    <div id="styleColors" class="flex flex-wrap gap-2"></div>
+    <div class="flex justify-end gap-2 mt-6">
+      <button class="btn" value="cancel" type="submit">Cancelar</button>
+      <button class="btn primary" value="ok" type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="askDlg" class="kd" aria-labelledby="askTitle">
+  <form method="dialog" class="p-6">
+    <p id="askTitle" class="font-display font-extrabold text-xl leading-snug"></p>
+    <p id="askMsg" class="text-muted text-[15px] mt-2 leading-relaxed"></p>
+    <label for="askInput" class="sr-only" id="askLabel">Texto</label>
+    <input id="askInput" class="field mt-4" autocomplete="off" maxlength="80">
+    <div class="flex justify-end gap-2 mt-5">
+      <button class="btn" value="cancel" type="submit" id="askCancel">Cancelar</button>
+      <button class="btn primary" value="ok" type="submit" id="askOk">Aceptar</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="cardMenu" class="sheet" aria-labelledby="cmTitle">
   <div class="grab" aria-hidden="true"></div>
   <div class="cm-head">
@@ -822,6 +1046,10 @@ tailwind.config = {
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12l3 3 5-6"/></svg>
         Seleccionar
       </button>
+      <button class="menu-item" type="button" id="cmSeen"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg><span id="cmSeenText">Marcar como visto</span></button>
+      <button class="menu-item" type="button" id="cmFav"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg><span id="cmFavText">Añadir a favoritos</span></button>
+      <button class="menu-item" type="button" id="cmNote"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v12l-4 4H4zM16 20v-4h4M8 9h8M8 13h5"/></svg>Nota y minuto de inicio</button>
+      <button class="menu-item" type="button" id="cmReorder"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01"/></svg>Ordenar a mano</button>
     </div>
     <div id="cmLists" hidden>
       <button class="menu-item" type="button" id="cmBack">
@@ -837,6 +1065,11 @@ tailwind.config = {
     <button class="btn w-full mt-2" type="button" id="cmCancel">Cancelar</button>
   </div>
 </dialog>
+
+<div id="reBar" class="selbar" hidden role="region" aria-label="Ordenar a mano">
+  <span class="count">Arrastra el asa ⠿ de cada vídeo para moverlo</span>
+  <button class="btn del" type="button" id="reDone" style="background:var(--accent);border-color:var(--accent);color:var(--accent-ink)">Listo</button>
+</div>
 
 <div id="selBar" class="selbar" hidden role="region" aria-label="Vídeos seleccionados">
   <span class="count" id="selCount" aria-live="polite">Toca los vídeos para seleccionarlos</span>
@@ -861,6 +1094,29 @@ tailwind.config = {
   const API_SORTS = ['pub-desc', 'pub-asc', 'views-desc', 'views-asc', 'dur-asc', 'dur-desc'];
   const VIEWS = ['grid-l', 'grid-m', 'grid-s', 'list-l', 'list-m', 'compact', 'mosaic'];
   const $ = s => document.querySelector(s);
+  // Ventanas propias (sustituyen a prompt y confirm, que sacan de la pantalla completa)
+  function askDialog({ title, msg = '', input = false, value = '', placeholder = '', ok = 'Aceptar', danger = false }) {
+    return new Promise(resolve => {
+      const d = $('#askDlg'), inp = $('#askInput'), okBtn = $('#askOk');
+      $('#askTitle').textContent = title;
+      $('#askMsg').textContent = msg; $('#askMsg').hidden = !msg;
+      inp.hidden = !input; inp.value = value; inp.placeholder = placeholder;
+      $('#askLabel').textContent = title;
+      okBtn.textContent = ok;
+      okBtn.style.background = danger ? 'var(--danger)' : ''; okBtn.style.borderColor = danger ? 'var(--danger)' : '';
+      d.returnValue = '';
+      const onClose = () => {
+        d.removeEventListener('close', onClose);
+        if (d.returnValue !== 'ok') return resolve(input ? null : false);
+        resolve(input ? inp.value.trim() || null : true);
+      };
+      d.addEventListener('close', onClose);
+      d.showModal();
+      if (input) { inp.focus(); inp.select(); } else okBtn.focus();
+    });
+  }
+  const askText = (title, value = '', placeholder = '') => askDialog({ title, input: true, value, placeholder, ok: value ? 'Guardar' : 'Crear' });
+  const askConfirm = (title, msg, ok = 'Eliminar') => askDialog({ title, msg, ok, danger: true });
   const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const thumb = vid => `https://i.ytimg.com/vi/${vid}/mqdefault.jpg`;
@@ -874,6 +1130,7 @@ tailwind.config = {
       s = { lists, activeId: lists[0].id };
     }
     if (!VIEWS.includes(s.view)) s.view = 'grid-m';
+    if (!['all', 'unseen', 'seen', 'fav', 'note'].includes(s.filter)) s.filter = 'all';
     if (!s.sort) s.sort = 'added';
     if (typeof s.apiKey !== 'string') s.apiKey = '';
     if (!Array.isArray(s.categories)) s.categories = [];
@@ -882,6 +1139,9 @@ tailwind.config = {
     if (typeof s.settings.noDup !== 'boolean') s.settings.noDup = true;
     if (typeof s.settings.openWith !== 'string') s.settings.openWith = 'ask';
     if (typeof s.settings.fullscreen !== 'boolean') s.settings.fullscreen = false;
+    if (typeof s.settings.markSeen !== 'boolean') s.settings.markSeen = true;
+    if (!['auto', 'light', 'dark'].includes(s.settings.theme)) s.settings.theme = 'auto';
+    if (!['0', '7', '30'].includes(s.settings.backupEvery)) s.settings.backupEvery = '7';
     if (!Array.isArray(s.settings.browsers)) s.settings.browsers = ['chrome', 'firefox', 'edge', 'samsung', 'brave', 'youtube'];
     if (!['classic', 'a', 'b', 'c'].includes(s.settings.layout)) s.settings.layout = 'classic';
     if (!Array.isArray(s.links)) s.links = [
@@ -909,11 +1169,15 @@ tailwind.config = {
   let query = '';
   const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const queryWords = () => norm(query).split(/\s+/).filter(Boolean);
+  const FILTERS = {
+    all: () => true, unseen: v => !v.seen, seen: v => !!v.seen, fav: v => !!v.fav, note: v => !!(v.note && v.note.trim())
+  };
   function visible(l) {
     const words = queryWords();
-    const arr = ordered(l);
+    const pass = FILTERS[state.filter] || FILTERS.all;
+    const arr = ordered(l).filter(pass);
     if (!words.length) return arr;
-    return arr.filter(v => { const hay = norm(v.title + ' ' + (v.channel || '')); return words.every(w => hay.includes(w)); });
+    return arr.filter(v => { const hay = norm(v.title + ' ' + (v.channel || '') + ' ' + (v.note || '')); return words.every(w => hay.includes(w)); });
   }
 
   /* ---------- Orden ---------- */
@@ -1189,6 +1453,13 @@ tailwind.config = {
   /* ---------- Quitar con deshacer ---------- */
   let lastRemoved = null;
   function removeVideo(listId, vuid) {
+    const li = document.querySelector(`ol[data-list="${listId}"] .card[data-uid="${vuid}"]`);
+    if (li && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      li.classList.add('leaving');
+      setTimeout(() => doRemoveVideo(listId, vuid), 170);
+    } else doRemoveVideo(listId, vuid);
+  }
+  function doRemoveVideo(listId, vuid) {
     const l = getList(listId);
     const i = l ? l.videos.findIndex(v => v.uid === vuid) : -1;
     if (i < 0) return;
@@ -1221,6 +1492,7 @@ tailwind.config = {
     return l ? visible(l) : [];
   }
   function setSelecting(on) {
+    if (on && typeof reordering !== 'undefined' && reordering) setReordering(false);
     selecting = on;
     selected.clear();
     document.body.classList.toggle('selecting', on);
@@ -1243,10 +1515,10 @@ tailwind.config = {
     $('#selAll').textContent = allOn ? 'Quitar selección' : 'Seleccionar todos';
     $('#selAll').disabled = !vis.length;
   }
-  function deleteSelected() {
+  async function deleteSelected() {
     const n = selected.size;
     if (!n) return;
-    if (!confirm(`¿Quitar ${n === 1 ? 'el vídeo seleccionado' : `los ${n} vídeos seleccionados`}?`)) return;
+    if (!await askConfirm(`¿Quitar ${n === 1 ? 'el vídeo seleccionado' : `los ${n} vídeos seleccionados`}?`, 'Podrás deshacerlo justo después.', 'Quitar')) return;
     const removed = [];
     state.lists.forEach(l => {
       l.videos.forEach((v, i) => { if (selected.has(v.uid)) removed.push({ listId: l.id, v, i }); });
@@ -1329,12 +1601,12 @@ tailwind.config = {
   $('#selMove').addEventListener('click', openMoveSheet);
   $('#msCancel').addEventListener('click', () => moveSheet.close());
   moveSheet.addEventListener('click', e => { if (e.target === moveSheet) moveSheet.close(); });
-  $('#moveSheetItems').addEventListener('click', e => {
+  $('#moveSheetItems').addEventListener('click', async e => {
     const b = e.target.closest('[data-move]');
     if (!b) return;
     moveSheet.close();
     if (b.dataset.move === '__new') {
-      const name = (prompt('Nombre de la nueva lista:') || '').trim();
+      const name = await askText('Nombre de la nueva lista', '', 'Por ejemplo: Recetas');
       if (!name) return;
       const l = { id: uid(), name, videos: [] };
       state.lists.push(l);
@@ -1343,24 +1615,24 @@ tailwind.config = {
   });
 
   /* ---------- Listas ---------- */
-  function newList() {
-    const name = (prompt('Nombre de la nueva lista (por ejemplo: Recetas, Deporte, Para dormir):') || '').trim();
+  async function newList() {
+    const name = await askText('Nombre de la nueva lista', '', 'Por ejemplo: Recetas, Deporte, Para dormir');
     if (!name) return;
     const l = { id: uid(), name, videos: [] };
     state.lists.push(l); state.activeId = l.id;
     save(); render();
     $('#addInput').focus();
   }
-  function renameList(id) {
+  async function renameList(id) {
     const l = typeof id === 'string' ? getList(id) : active(); if (!l) return;
-    const name = (prompt('Nuevo nombre de la lista:', l.name) || '').trim();
+    const name = await askText('Nuevo nombre de la lista', l.name);
     if (!name || name === l.name) return;
     l.name = name; save(); render();
   }
-  function deleteList(id) {
+  async function deleteList(id) {
     const l = typeof id === 'string' ? getList(id) : active(); if (!l) return;
     const n = l.videos.length;
-    if (!confirm(`¿Eliminar la lista «${l.name}»${n ? ` y sus ${n} vídeo${n === 1 ? '' : 's'}` : ''}? No se puede deshacer.`)) return;
+    if (!await askConfirm(`¿Eliminar la lista «${l.name}»?`, `${n ? `Se borrarán también sus ${n} vídeo${n === 1 ? '' : 's'}. ` : ''}No se puede deshacer.`)) return;
     const wasActive = !isAll() && active() === l;
     const idx = state.lists.indexOf(l);
     state.lists.splice(idx, 1);
@@ -1376,7 +1648,9 @@ tailwind.config = {
     const ord = l ? visible(l) : [];
     if (!ord[i]) return;
     const ids = ord.slice(i, i + 50).map(v => v.vid);
-    openUrl('https://www.youtube.com/watch_videos?video_ids=' + ids.join(','), ord[i].title);
+    const first = ord[i];
+    openUrl('https://www.youtube.com/watch_videos?video_ids=' + ids.join(',') + (first.start ? `&t=${first.start}s` : ''), first.title,
+      () => { if (state.settings.markSeen && !first.seen) { first.seen = true; first.seenAt = Date.now(); save(); renderList(); } });
   }
 
   /* ---------- Elegir navegador (Android) ---------- */
@@ -1407,11 +1681,12 @@ tailwind.config = {
   }
   const browserSheet = $('#browserSheet');
   let pendingUrl = null;
-  function openUrl(url, what) {
+  let pendingDone = null;
+  function openUrl(url, what, done) {
     const mode = state.settings.openWith;
-    if (!IS_ANDROID || mode === 'system') { launch(url, SYSTEM); return; }
-    if (mode !== 'ask' && browserById(mode)) { launch(url, browserById(mode)); return; }
-    pendingUrl = url;
+    if (!IS_ANDROID || mode === 'system') { launch(url, SYSTEM); if (done) done(); return; }
+    if (mode !== 'ask' && browserById(mode)) { launch(url, browserById(mode)); if (done) done(); return; }
+    pendingUrl = url; pendingDone = done || null;
     $('#bsWhat').textContent = what ? `Desde «${what}»` : '';
     const list = [...state.settings.browsers.map(browserById).filter(Boolean), SYSTEM];
     $('#browserSheetItems').innerHTML = list.map(b => `<button class="menu-item" type="button" data-br="${b.id}">
@@ -1428,9 +1703,10 @@ tailwind.config = {
       state.settings.openWith = b.id; save();
       toast(`Los vídeos se abrirán siempre en ${b.name}. Puedes cambiarlo en Ajustes.`);
     }
-    const url = pendingUrl; pendingUrl = null;
+    const url = pendingUrl, done = pendingDone; pendingUrl = null; pendingDone = null;
     browserSheet.close();
     launch(url, b);
+    if (done) done();
   });
   $('#bsCancel').addEventListener('click', () => browserSheet.close());
   browserSheet.addEventListener('click', e => { if (e.target === browserSheet) browserSheet.close(); });
@@ -1459,22 +1735,22 @@ tailwind.config = {
   const rootLists = () => state.lists.filter(l => !catOf(l));
   const catLists = c => state.lists.filter(l => l.catId === c.id);
   const orderedLists = () => [...state.categories.flatMap(catLists), ...rootLists()];
-  function newCategory(ask) {
-    const name = (prompt(ask || 'Nombre de la nueva categoría (por ejemplo: Ocio, Aprender, Niños):') || '').trim();
+  async function newCategory() {
+    const name = await askText('Nombre de la nueva categoría', '', 'Por ejemplo: Ocio, Aprender, Niños');
     if (!name) return null;
     const c = { id: uid(), name };
     state.categories.push(c);
     save();
     return c;
   }
-  function renameCategory(c) {
-    const name = (prompt('Nuevo nombre de la categoría:', c.name) || '').trim();
+  async function renameCategory(c) {
+    const name = await askText('Nuevo nombre de la categoría', c.name);
     if (!name || name === c.name) return;
     c.name = name; save(); render(); renderCatAdmin();
   }
-  function deleteCategory(c) {
+  async function deleteCategory(c) {
     const n = catLists(c).length;
-    if (!confirm(`¿Eliminar la categoría «${c.name}»?${n ? ` Sus ${n} lista${n === 1 ? '' : 's'} pasarán a la raíz; no se borra ningún vídeo.` : ''}`)) return;
+    if (!await askConfirm(`¿Eliminar la categoría «${c.name}»?`, n ? `Sus ${n} lista${n === 1 ? '' : 's'} pasarán a la raíz; no se borra ningún vídeo.` : 'No contiene listas.')) return;
     catLists(c).forEach(l => { l.catId = null; });
     state.categories = state.categories.filter(x => x !== c);
     save(); render(); renderCatAdmin();
@@ -1492,10 +1768,11 @@ tailwind.config = {
       nav.appendChild(b);
       return b;
     };
-    const go = id => () => { if (selecting) setSelecting(false); state.activeId = id; save(); render(); $('#addMsg').textContent = ''; };
-    const listTab = (l, inCat) => mk('tab' + (inCat ? ' in-cat' : ''),
-      `<span class="ini" aria-hidden="true">${esc(l.name.trim().charAt(0) || '·')}<span class="count">${l.videos.length}</span></span><span class="name">${esc(l.name)}</span><span class="count c2">${l.videos.length}</span>`,
-      go(l.id), { role: 'tab', 'aria-selected': String(l.id === state.activeId), title: l.name, 'data-lid': l.id });
+    const go = id => () => { if (selecting) setSelecting(false); if (reordering) setReordering(false); state.activeId = id; save(); render(); $('#addMsg').textContent = ''; };
+    const styled = (b, o) => { if (o.color) { b.classList.add('has-color'); b.style.setProperty('--lc', o.color); } return b; };
+    const listTab = (l, inCat) => styled(mk('tab' + (inCat ? ' in-cat' : ''),
+      `<span class="ini${l.emoji ? ' emo' : ''}" aria-hidden="true">${esc(l.emoji || l.name.trim().charAt(0) || '·')}<span class="count">${l.videos.length}</span></span>${l.emoji ? `<span class="lemo" aria-hidden="true">${esc(l.emoji)}</span>` : ''}<span class="name">${esc(l.name)}</span><span class="count c2">${l.videos.length}</span>`,
+      go(l.id), { role: 'tab', 'aria-selected': String(l.id === state.activeId), title: l.name, 'data-lid': l.id }), l);
     if (state.lists.length) {
       const total = state.lists.reduce((a, l) => a + l.videos.length, 0);
       mk('tab', `<span class="ini" aria-hidden="true">★<span class="count">${total}</span></span><span class="name">Todas</span><span class="count c2">${total}</span>`,
@@ -1504,16 +1781,18 @@ tailwind.config = {
     state.categories.forEach(c => {
       const ls = catLists(c);
       const hasActive = !isAll() && ls.some(l => l.id === state.activeId);
-      mk('tab cat' + (hasActive ? ' has-active' : ''),
-        `<span class="ini" aria-hidden="true">${FOLDER_SVG}<span class="count">${ls.length}</span></span><span class="fico">${FOLDER_SVG}</span><span class="name">${esc(c.name)}</span><span class="count c2 lists" title="${ls.length} lista${ls.length === 1 ? '' : 's'}">${ls.length}</span>${CHEV_SVG}`,
+      const nv = ls.reduce((a, l) => a + l.videos.length, 0);
+      const ico = c.emoji ? `<span class="lemo">${esc(c.emoji)}</span>` : FOLDER_SVG;
+      styled(mk('tab cat' + (hasActive ? ' has-active' : ''),
+        `<span class="ini${c.emoji ? ' emo' : ''}" aria-hidden="true">${c.emoji ? esc(c.emoji) : FOLDER_SVG}<span class="count">${nv}</span></span><span class="fico">${ico}</span><span class="name">${esc(c.name)}</span><span class="count c2" title="${ls.length} lista${ls.length === 1 ? '' : 's'} · ${nv} vídeo${nv === 1 ? '' : 's'}">${nv}</span>${CHEV_SVG}`,
         () => { toggleCat(c.id); renderTabs(); },
-        { 'aria-expanded': String(openCats.has(c.id)), title: `Categoría ${c.name}`, 'data-cid': c.id });
+        { 'aria-expanded': String(openCats.has(c.id)), title: `Categoría ${c.name}: ${ls.length} lista${ls.length === 1 ? '' : 's'}, ${nv} vídeo${nv === 1 ? '' : 's'}`, 'data-cid': c.id }), c);
       if (openCats.has(c.id)) ls.forEach(l => listTab(l, true));
     });
     rootLists().forEach(l => listTab(l, false));
     mk('tab add', '<span class="ini" aria-hidden="true">+</span><span class="name">+ Nueva lista</span>', newList, { 'aria-label': 'Nueva lista' });
     mk('tab add', `<span class="ini" aria-hidden="true">${FOLDER_SVG}</span><span class="name">+ Nueva categoría</span>`,
-      () => { if (newCategory()) render(); }, { 'aria-label': 'Nueva categoría' });
+      async () => { if (await newCategory()) render(); }, { 'aria-label': 'Nueva categoría' });
   }
 
   // Elegir la categoría de la lista abierta
@@ -1534,13 +1813,13 @@ tailwind.config = {
   $('#catBtn').addEventListener('click', () => openCatSheet());
   $('#csCancel').addEventListener('click', () => catSheet.close());
   catSheet.addEventListener('click', e => { if (e.target === catSheet) catSheet.close(); });
-  $('#catSheetItems').addEventListener('click', e => {
+  $('#catSheetItems').addEventListener('click', async e => {
     const b = e.target.closest('[data-cat]');
     const l = getList(catTargetId);
     if (!b || !l) return;
     catSheet.close();
     let c = null;
-    if (b.dataset.cat === '__new') { c = newCategory(); if (!c) return; }
+    if (b.dataset.cat === '__new') { c = await newCategory(); if (!c) return; }
     else if (b.dataset.cat !== '__root') c = state.categories.find(x => x.id === b.dataset.cat);
     l.catId = c ? c.id : null;
     if (c) openCats.add(c.id);
@@ -1569,7 +1848,7 @@ tailwind.config = {
     if (r) renameCategory(find(r.dataset.cren));
     if (d) deleteCategory(find(d.dataset.cdel));
   });
-  $('#catAdd').addEventListener('click', () => { if (newCategory()) { render(); renderCatAdmin(); } });
+  $('#catAdd').addEventListener('click', async () => { if (await newCategory()) { render(); renderCatAdmin(); } });
 
   const EQ = '<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>';
   function cardHTML(v, i) {
@@ -1577,19 +1856,25 @@ tailwind.config = {
     const isSel = selected.has(v.uid);
     const meta = metaText(v);
     const dur = v.duration ? fmtDur(v.duration) : '';
-    return `<li class="card${isNow ? ' is-now' : ''}${isSel ? ' is-sel' : ''}${v.unavailable ? ' is-off' : ''}">
+    const flags = `${v.fav ? '<span class="if-fav" title="Favorito">★</span>' : ''}${v.seen ? '<span class="if-seen" title="Visto">✓</span>' : ''}`;
+    const extra = [v.start ? `▶ desde ${fmtDur(v.start)}` : '', v.note ? '📝 ' + v.note.replace(/\s+/g, ' ') : ''].filter(Boolean).join(' · ');
+    return `<li class="card${isNow ? ' is-now' : ''}${isSel ? ' is-sel' : ''}${v.unavailable ? ' is-off' : ''}${v.seen ? ' is-seen' : ''}" data-uid="${v.uid}" style="--i:${Math.min(i, 14)}">
+      <span class="drag" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01"/></svg></span>
       <button class="play" type="button" data-i="${i}" data-uid="${v.uid}" aria-label="${selecting ? 'Seleccionar' : 'Abrir en YouTube desde'} ${esc(v.title)}"${selecting ? ` aria-pressed="${isSel}"` : ''}${isNow ? ' aria-current="true"' : ''}>
         <span class="check" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></span>
         <span class="cpos">${isNow ? EQ : i + 1}</span>
         <span class="thumb">
-          <img src="${thumb(v.vid)}" alt="" loading="lazy" width="320" height="180" draggable="false">
+          <img src="${thumb(v.vid)}" alt="" loading="lazy" width="320" height="180" draggable="false" onload="this.classList.add('ok')" onerror="this.classList.add('ok','err')">
           <span class="pos">${i + 1}</span>
+          ${v.fav ? '<span class="fav-badge" aria-label="Favorito">★</span>' : ''}
+          ${v.seen ? '<span class="seen-badge">✓ Visto</span>' : ''}
           ${dur ? `<span class="dur">${dur}</span>` : ''}
           <span class="badge">${EQ}Sonando</span>
         </span>
         <span class="info">
-          <span class="title${v.titleOk ? '' : ' pending'}">${esc(v.title)}</span>
+          <span class="title${v.titleOk ? '' : ' pending'}">${flags ? `<span class="iflags">${flags}</span>` : ''}${esc(v.title)}</span>
           ${meta ? `<span class="meta">${esc(meta)}</span>` : ''}
+          ${extra ? `<span class="meta extra">${esc(extra)}</span>` : ''}
         </span>
         ${dur ? `<span class="cdur">${dur}</span>` : ''}
       </button>
@@ -1599,6 +1884,7 @@ tailwind.config = {
     </li>`;
   }
 
+  let lastListKey = '', enterTimer;
   function renderList() {
     const all = isAll();
     const l = active();
@@ -1607,7 +1893,7 @@ tailwind.config = {
     $('#noLists').hidden = has;
     if (!has) return;
     if (!all) state.activeId = l.id;
-    ['#playAllBtn', '#renameBtn', '#deleteListBtn', '#addToggle', '#addMsg', '#catBtn'].forEach(sel => { $(sel).hidden = all; });
+    ['#playAllBtn', '#renameBtn', '#deleteListBtn', '#addToggle', '#addMsg', '#catBtn', '#reorderBtn'].forEach(sel => { $(sel).hidden = all; });
     const formOpen = !all && (addOpen || l.videos.length === 0);
     $('#addForm').hidden = !formOpen;
     $('#addToggle').setAttribute('aria-expanded', String(formOpen));
@@ -1620,8 +1906,8 @@ tailwind.config = {
     const pl = n => `${n} vídeo${n === 1 ? '' : 's'}`;
 
     if (all) $('#listName').textContent = 'Todas las listas';
-    else $('#listName').innerHTML = `<button type="button" class="namebtn" id="listNameBtn" title="Toca para renombrar" aria-label="Renombrar la lista ${esc(l.name)}"><span>${esc(l.name)}</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4z"/></svg></button>`;
-    $('#pkName').textContent = all ? 'Todas las listas' : l.name;
+    else $('#listName').innerHTML = `<button type="button" class="namebtn" id="listNameBtn" title="Toca para renombrar" aria-label="Renombrar la lista ${esc(l.name)}"><span>${l.emoji ? esc(l.emoji) + ' ' : ''}${esc(l.name)}</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4z"/></svg></button>`;
+    $('#pkName').textContent = all ? 'Todas las listas' : (l.emoji ? l.emoji + ' ' : '') + l.name;
     $('#pkCount').textContent = total;
     let meta;
     if (all) meta = total ? `${lists.length} lista${lists.length === 1 ? '' : 's'} con vídeos · ${pl(total)}` : 'Todavía no hay vídeos en ninguna lista';
@@ -1648,9 +1934,13 @@ tailwind.config = {
     }
 
     const ul = $('#cards'), box = $('#allSections');
+    const key = (all ? ALL : l.id) + '|' + state.view + '|' + state.sort + '|' + state.filter;
+    const animate = key !== lastListKey && !drag;
+    lastListKey = key;
+    if (animate) { [ul, box].forEach(x => { x.classList.remove('enter'); void x.offsetWidth; x.classList.add('enter'); }); clearTimeout(enterTimer); enterTimer = setTimeout(() => { ul.classList.remove('enter'); box.classList.remove('enter'); }, 900); }
     ul.hidden = all; box.hidden = !all;
     if (!all) {
-      ul.className = 'cards view-' + state.view;
+      ul.className = 'cards view-' + state.view + (ul.classList.contains('enter') ? ' enter' : '');
       ul.dataset.list = l.id;
       ul.innerHTML = shownBy.get(l.id).map(cardHTML).join('');
       box.innerHTML = '';
@@ -1674,6 +1964,7 @@ tailwind.config = {
   function renderControls() {
     $('#viewSel').value = state.view;
     $('#sortSel').value = state.sort;
+    $('#filterSel').value = state.filter;
     $('#apiGroup').label = state.apiKey ? 'Datos de YouTube' : 'Datos de YouTube (necesitan clave)';
     $('#keyBtnText').textContent = state.apiKey ? 'Clave de YouTube ✓' : 'Clave de YouTube';
   }
@@ -1762,11 +2053,11 @@ tailwind.config = {
   $('#linksBtn').addEventListener('click', () => { renderLinks(); $('#linkMsg').textContent = ''; linksDlg.showModal(); });
   $('#linksClose').addEventListener('click', () => linksDlg.close());
   linksDlg.addEventListener('click', e => { if (e.target === linksDlg) linksDlg.close(); });
-  $('#linksList').addEventListener('click', e => {
+  $('#linksList').addEventListener('click', async e => {
     const del = e.target.closest('[data-del]');
     if (!del) return;
     const l = state.links.find(x => x.id === del.dataset.del);
-    if (!l || !confirm(`¿Quitar el enlace «${l.name || hostOf(l.url)}»?`)) return;
+    if (!l || !await askConfirm(`¿Quitar el enlace «${l.name || hostOf(l.url)}»?`, '', 'Quitar')) return;
     state.links = state.links.filter(x => x !== l);
     save(); renderLinks();
   });
@@ -1783,19 +2074,25 @@ tailwind.config = {
   });
 
   /* ---------- Copia de seguridad ---------- */
-  function exportData() {
+  function buildBackup() {
     const data = { app: 'videoteca', version: 3, exported: new Date().toISOString(),
       links: state.links.map(l => ({ name: l.name, url: l.url })),
-      categories: state.categories.map(c => c.name),
-      lists: state.lists.map(l => ({ name: l.name, category: catOf(l) ? catOf(l).name : null, videos: l.videos.map(v => ({
+      categories: state.categories.map(c => ({ name: c.name, emoji: c.emoji || '', color: c.color || '' })),
+      lists: state.lists.map(l => ({ name: l.name, emoji: l.emoji || '', color: l.color || '', category: catOf(l) ? catOf(l).name : null, videos: l.videos.map(v => ({
         vid: v.vid, title: v.title, titleOk: v.titleOk, channel: v.channel, published: v.published,
-        views: v.views, duration: v.duration, added: v.added })) })) };
+        views: v.views, duration: v.duration, added: v.added, seen: v.seen, fav: v.fav, note: v.note, start: v.start })) })) };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    return { blob, name: `videoteca-copia-${new Date().toISOString().slice(0, 10)}.json` };
+  }
+  function exportData() {
+    const { blob, name } = buildBackup();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `videoteca-copia-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    markBackup();
+    toast('Copia descargada en tu carpeta de descargas.');
   }
   async function importData(file) {
     try {
@@ -1805,7 +2102,7 @@ tailwind.config = {
       data.lists.forEach(src => {
         if (!src || !src.name) return;
         let l = state.lists.find(x => x.name.toLowerCase() === String(src.name).toLowerCase());
-        if (!l) { l = { id: uid(), name: String(src.name), videos: [] }; state.lists.push(l); lists++; }
+        if (!l) { l = { id: uid(), name: String(src.name), emoji: src.emoji || '', color: src.color || '', videos: [] }; state.lists.push(l); lists++; }
         if (src.category && !catOf(l)) {
           let c = state.categories.find(x => x.name.toLowerCase() === String(src.category).toLowerCase());
           if (!c) { c = { id: uid(), name: String(src.category) }; state.categories.push(c); }
@@ -1814,9 +2111,15 @@ tailwind.config = {
         (src.videos || []).forEach(v => {
           if (!v || !/^[\w-]{11}$/.test(v.vid) || (state.settings.noDup && l.videos.some(x => x.vid === v.vid))) return;
           l.videos.push({ uid: uid(), vid: v.vid, title: v.title || PENDING, titleOk: !!v.titleOk,
-            channel: v.channel, published: v.published, views: v.views, duration: v.duration, added: v.added });
+            channel: v.channel, published: v.published, views: v.views, duration: v.duration, added: v.added,
+            seen: !!v.seen, fav: !!v.fav, note: v.note || '', start: v.start || 0 });
           newVids.push(v.vid);
         });
+      });
+      if (Array.isArray(data.categories)) data.categories.forEach(x => {
+        if (!x || typeof x !== 'object' || !x.name) return;
+        const c = state.categories.find(y => y.name.toLowerCase() === String(x.name).toLowerCase());
+        if (c) { if (!c.emoji && x.emoji) c.emoji = x.emoji; if (!c.color && x.color) c.color = x.color; }
       });
       if (Array.isArray(data.links)) data.links.forEach(x => {
         const url = x && normUrl(String(x.url || ''));
@@ -1841,7 +2144,7 @@ tailwind.config = {
     if (rm) { removeVideo(box.dataset.list, rm.dataset.remove); return; }
     const pl = e.target.closest('[data-i]');
     if (!pl) return;
-    if (Date.now() < suppressUntil) return;
+    if (reordering || Date.now() < suppressUntil) return;
     if (selecting) toggleSelected(pl.dataset.uid);
     else openInYouTube(box.dataset.list, Number(pl.dataset.i));
   });
@@ -1868,6 +2171,9 @@ tailwind.config = {
     $('#cmThumb').src = thumb(v.vid);
     $('#cmTitle').textContent = v.title;
     $('#cmMain').hidden = false; $('#cmLists').hidden = true;
+    $('#cmSeenText').textContent = v.seen ? 'Marcar como no visto' : 'Marcar como visto';
+    $('#cmFavText').textContent = v.fav ? 'Quitar de favoritos' : 'Añadir a favoritos';
+    $('#cmReorder').hidden = isAll();
     cmGuard = true;
     document.addEventListener('pointerup', () => setTimeout(() => { cmGuard = false; }, 60), { once: true });
     cm.showModal();
@@ -1897,16 +2203,63 @@ tailwind.config = {
     closeCardMenu();
     moveVideo(listId, vuid, b.dataset.to);
   });
-  $('#cmNew').addEventListener('click', () => {
+  $('#cmNew').addEventListener('click', async () => {
     if (!cmCtx) return;
     const { listId, vuid } = cmCtx;
     closeCardMenu();
-    const name = (prompt('Nombre de la nueva lista:') || '').trim();
+    const name = await askText('Nombre de la nueva lista', '', 'Por ejemplo: Recetas');
     if (!name) return;
     const l = { id: uid(), name, videos: [] };
     state.lists.push(l);
     moveVideo(listId, vuid, l.id);
   });
+  const cmVideo = () => { if (!cmCtx) return null; const l = getList(cmCtx.listId); return l ? l.videos.find(x => x.uid === cmCtx.vuid) : null; };
+  $('#cmSeen').addEventListener('click', () => {
+    const v = cmVideo(); if (!v) return;
+    v.seen = !v.seen; v.seenAt = v.seen ? Date.now() : null;
+    closeCardMenu(); save(); renderList();
+    toast(v.seen ? 'Marcado como visto.' : 'Marcado como no visto.');
+  });
+  $('#cmFav').addEventListener('click', () => {
+    const v = cmVideo(); if (!v) return;
+    v.fav = !v.fav;
+    closeCardMenu(); save(); renderList();
+    toast(v.fav ? '★ Añadido a favoritos.' : 'Quitado de favoritos.');
+  });
+  // Nota y minuto de inicio
+  const parseTime = t => {
+    t = String(t || '').trim(); if (!t) return 0;
+    if (/^\d+$/.test(t)) return Number(t);
+    const p = t.split(/[:.,']/).map(Number);
+    if (p.some(isNaN)) return null;
+    return p.reduce((a, n) => a * 60 + n, 0);
+  };
+  $('#cmNote').addEventListener('click', () => {
+    const v = cmVideo(); if (!v) return;
+    closeCardMenu();
+    const d = $('#noteDlg');
+    $('#noteVideo').textContent = v.title;
+    $('#noteText').value = v.note || '';
+    $('#noteStart').value = v.start ? fmtDur(v.start) : '';
+    $('#noteErr').hidden = true;
+    d.returnValue = '';
+    d.showModal();
+    $('#noteText').focus();
+    const onClose = () => {
+      d.removeEventListener('close', onClose);
+      if (d.returnValue !== 'ok') return;
+      v.note = $('#noteText').value.trim();
+      v.start = parseTime($('#noteStart').value) || 0;
+      save(); renderList();
+      toast('Nota guardada.');
+    };
+    d.addEventListener('close', onClose);
+  });
+  $('#noteOk').addEventListener('click', e => {
+    if (parseTime($('#noteStart').value) === null) { e.preventDefault(); $('#noteErr').hidden = false; $('#noteStart').focus(); }
+  });
+  $('#cmReorder').addEventListener('click', () => { closeCardMenu(); setReordering(true); });
+
   $('#cmSelect').addEventListener('click', () => {
     if (!cmCtx) return;
     const { vuid } = cmCtx;
@@ -1916,13 +2269,84 @@ tailwind.config = {
     renderList(); renderSelBar();
   });
 
+  /* ---------- Ordenar a mano ---------- */
+  let reordering = false;
+  function setReordering(on) {
+    const l = active();
+    if (on && !l) return;
+    if (on) {
+      if (selecting) setSelecting(false);
+      const changed = [];
+      if (state.sort !== 'added') { state.sort = 'added'; changed.push('el orden'); }
+      if (state.filter !== 'all') { state.filter = 'all'; changed.push('el filtro'); }
+      if (query) { query = ''; $('#searchInput').value = ''; $('#searchClear').hidden = true; changed.push('la búsqueda'); }
+      if (changed.length) toast(`Para ordenar a mano he quitado ${changed.join(', ')}.`);
+      save();
+    }
+    reordering = on;
+    document.body.classList.toggle('reordering', on);
+    $('#reBar').hidden = !on;
+    render();
+  }
+  $('#reDone').addEventListener('click', () => { setReordering(false); toast('Orden guardado.'); });
+  $('#reorderBtn').addEventListener('click', () => setReordering(!reordering));
+  let drag = null;
+  function dragAutoScroll() {
+    if (!drag) return;
+    const m = 70, y = drag.y;
+    if (y < m + 40) window.scrollBy(0, -10); else if (y > innerHeight - 110) window.scrollBy(0, 10);
+    drag.raf = requestAnimationFrame(dragAutoScroll);
+    placeDrag();
+  }
+  function placeDrag() {
+    if (!drag) return;
+    const { el } = drag;
+    el.style.transform = '';
+    const r = el.getBoundingClientRect();
+    el.style.transform = `translate(${drag.x - drag.offX - r.left}px, ${drag.y - drag.offY - r.top}px)`;
+    el.style.pointerEvents = 'none';
+    const under = document.elementFromPoint(drag.x, drag.y);
+    el.style.pointerEvents = '';
+    const target = under && under.closest('#cards .card');
+    if (!target || target === el) return;
+    const items = [...el.parentNode.children];
+    if (items.indexOf(target) > items.indexOf(el)) target.after(el); else target.before(el);
+  }
+  $('#cards').addEventListener('pointerdown', e => {
+    if (!reordering) return;
+    const h = e.target.closest('.drag');
+    if (!h) return;
+    e.preventDefault();
+    const el = h.closest('.card'), r = el.getBoundingClientRect();
+    drag = { el, x: e.clientX, y: e.clientY, offX: e.clientX - r.left, offY: e.clientY - r.top, id: e.pointerId };
+    el.classList.add('dragging');
+    try { h.setPointerCapture(e.pointerId); } catch (err) {}
+    drag.raf = requestAnimationFrame(dragAutoScroll);
+  });
+  document.addEventListener('pointermove', e => { if (drag && e.pointerId === drag.id) { drag.x = e.clientX; drag.y = e.clientY; } });
+  const endDrag = () => {
+    if (!drag) return;
+    cancelAnimationFrame(drag.raf);
+    drag.el.classList.remove('dragging'); drag.el.style.transform = '';
+    const l = active();
+    if (l) {
+      const order = [...$('#cards').children].map(li => li.dataset.uid);
+      l.videos.sort((a, b) => order.indexOf(a.uid) - order.indexOf(b.uid));
+      save();
+    }
+    drag = null;
+    renderList();
+  };
+  document.addEventListener('pointerup', endDrag);
+  document.addEventListener('pointercancel', endDrag);
+
   // Pulsación larga (táctil) o clic derecho (ordenador) sobre un vídeo
   const cancelLongPress = () => {
     clearTimeout(lpTimer); lpTimer = null;
     if (lpEl) { lpEl.classList.remove('pressing'); lpEl = null; }
   };
   $('#main').addEventListener('pointerdown', e => {
-    if (selecting || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (selecting || reordering || (e.pointerType === 'mouse' && e.button !== 0)) return;
     const pl = e.target.closest('ol[data-list] .play');
     if (!pl) return;
     cancelLongPress();
@@ -2001,8 +2425,9 @@ tailwind.config = {
   const listSheet = $('#listSheet');
   function openListSheet() {
     const total = state.lists.reduce((a, l) => a + l.videos.length, 0);
+    const deco = o => o ? `${o.color ? `<span class="cdot" style="--lc:${o.color}"></span>` : ''}${o.emoji ? `<span class="lemo">${esc(o.emoji)}</span>` : ''}` : '';
     const row = (id, name, n, on) => `<button class="menu-item" type="button" data-pick="${id}"${on ? ' aria-current="true" style="background:color-mix(in srgb, var(--accent) 10%, transparent)"' : ''}>
-        <span class="min-w-0 truncate">${esc(name)}</span><span class="count">${n}</span></button>`;
+        ${deco(getList(id))}<span class="min-w-0 truncate">${esc(name)}</span><span class="count">${n} vídeo${n === 1 ? '' : 's'}</span></button>`;
     const cur = l => !isAll() && active() && active().id === l.id;
     $('#listSheetItems').innerHTML =
       (state.lists.length ? row(ALL, 'Todas las listas', total, isAll()) : '') +
@@ -2010,21 +2435,21 @@ tailwind.config = {
         const ls = catLists(c), open = openCats.has(c.id);
         const hasActive = ls.some(cur);
         return `<button class="menu-item cat-toggle" type="button" data-tog="${c.id}" aria-expanded="${open}"${hasActive && !open ? ' style="box-shadow:inset 0 0 0 1.5px var(--accent)"' : ''}>
-            ${FOLDER_SVG}<span class="min-w-0 truncate" style="font-weight:700">${esc(c.name)}</span><span class="count">${ls.length} lista${ls.length === 1 ? '' : 's'}</span>${CHEV_SVG}</button>` +
+            ${c.color ? `<span class="cdot" style="--lc:${c.color}"></span>` : ''}${c.emoji ? `<span class="lemo">${esc(c.emoji)}</span>` : FOLDER_SVG}<span class="min-w-0 truncate" style="font-weight:700">${esc(c.name)}</span><span class="count">${ls.length} lista${ls.length === 1 ? '' : 's'} · ${ls.reduce((a, l) => a + l.videos.length, 0)} vídeos</span>${CHEV_SVG}</button>` +
           (open ? (ls.length ? ls.map(l => row(l.id, l.name, l.videos.length, cur(l)).replace('class="menu-item"', 'class="menu-item in-cat"')).join('') : '<p class="text-sm text-muted" style="padding:4px 28px 8px">Sin listas</p>') : '');
       }).join('') +
       (state.categories.length && rootLists().length ? '<p class="sheet-label">Sin categoría</p>' : '') +
-      rootLists().map(l => row(l.id, l.name, l.videos.length, cur(l))).join('') +
-      `<button class="menu-item" type="button" data-pick="__new"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva lista…</button>` +
-      `<button class="menu-item" type="button" data-pick="__newcat">${FOLDER_SVG}Nueva categoría…</button>`;
+      rootLists().map(l => row(l.id, l.name, l.videos.length, cur(l))).join('') ;
     if (!listSheet.open) listSheet.showModal();
     const focusEl = $('#listSheetItems [aria-current="true"]') || $('#listSheetItems .menu-item');
     if (focusEl) focusEl.focus();
   }
   $('#listPicker').addEventListener('click', openListSheet);
   $('#lsCancel').addEventListener('click', () => listSheet.close());
+  $('#lsNewList').addEventListener('click', () => { listSheet.close(); newList(); });
+  $('#lsNewCat').addEventListener('click', async () => { if (await newCategory()) { render(); openListSheet(); } });
   listSheet.addEventListener('click', e => { if (e.target === listSheet) listSheet.close(); });
-  $('#listSheetItems').addEventListener('click', e => {
+  $('#listSheetItems').addEventListener('click', async e => {
     if (Date.now() < suppressUntil) return;
     const t = e.target.closest('[data-tog]');
     if (t) {
@@ -2037,14 +2462,19 @@ tailwind.config = {
     if (!b) return;
     listSheet.close();
     if (b.dataset.pick === '__new') { newList(); return; }
-    if (b.dataset.pick === '__newcat') { if (newCategory()) render(); return; }
+    if (b.dataset.pick === '__newcat') { if (await newCategory()) render(); return; }
     if (selecting) setSelecting(false);
+    if (reordering) setReordering(false);
     state.activeId = b.dataset.pick; save(); render(); $('#addMsg').textContent = '';
   });
 
   const setDlg = $('#settingsDialog');
   $('#settingsBtn').addEventListener('click', () => {
     $('#optNoDup').checked = state.settings.noDup;
+    $('#optMarkSeen').checked = state.settings.markSeen;
+    $('#optTheme').value = state.settings.theme;
+    $('#optBackup').value = state.settings.backupEvery;
+    renderBackupHint();
     renderCatAdmin();
     renderOpenSettings();
     $('#optFull').checked = state.settings.fullscreen;
@@ -2056,6 +2486,7 @@ tailwind.config = {
     state.settings.layout = r.value;
     if (LAYOUT_VIEW[r.value]) state.view = LAYOUT_VIEW[r.value];
     save(); applyLayout(); render();
+    document.body.classList.remove('shrunk'); sizeHeader();
   }));
   $('#settingsClose').addEventListener('click', () => setDlg.close());
   setDlg.addEventListener('click', e => { if (e.target === setDlg) setDlg.close(); });
@@ -2120,20 +2551,52 @@ tailwind.config = {
   $('#imCancel').addEventListener('click', () => im.close());
   $('#imUp').addEventListener('click', () => moveItem(-1));
   $('#imDown').addEventListener('click', () => moveItem(1));
-  $('#imRename').addEventListener('click', () => {
+  $('#imRename').addEventListener('click', async () => {
     if (!imCtx) return;
-    if (imCtx.type === 'cat') renameCategory(state.categories.find(c => c.id === imCtx.id));
-    else renameList(imCtx.id);
+    if (imCtx.type === 'cat') await renameCategory(state.categories.find(c => c.id === imCtx.id));
+    else await renameList(imCtx.id);
     refreshAll();
   });
-  $('#imDelete').addEventListener('click', () => {
+  $('#imDelete').addEventListener('click', async () => {
     if (!imCtx) return;
     const { type, id } = imCtx;
     im.close();
-    if (type === 'cat') deleteCategory(state.categories.find(c => c.id === id));
-    else deleteList(id);
+    if (type === 'cat') await deleteCategory(state.categories.find(c => c.id === id));
+    else await deleteList(id);
     if ($('#listSheet').open) openListSheet();
   });
+  const EMOJIS = ['🎵', '🎸', '🎤', '🎬', '🍿', '📺', '🍳', '🥘', '🏋️', '⚽', '🧘', '📚', '🎓', '💡', '🛠️', '💻', '🌍', '✈️', '🐶', '🧸', '😂', '❤️', '⭐', '🔥'];
+  const COLORS = ['#2B45F0', '#0E9F6E', '#E0A100', '#E8590C', '#D6336C', '#7048E8', '#0B7285', '#5C940D', '#8B5E34', '#495057'];
+  $('#imStyle').addEventListener('click', () => {
+    if (!imCtx) return;
+    const o = imCtx.type === 'cat' ? state.categories.find(c => c.id === imCtx.id) : getList(imCtx.id);
+    if (!o) return;
+    im.close();
+    const d = $('#styleDlg');
+    let color = o.color || '';
+    $('#styleTitle').textContent = `Color y emoji · ${o.name}`;
+    $('#styleEmoji').value = o.emoji || '';
+    const paintEmo = () => $('#styleEmojis').innerHTML = EMOJIS.map(e => `<button type="button" class="emo-btn" data-emo="${e}" aria-pressed="${$('#styleEmoji').value === e}" aria-label="${e}">${e}</button>`).join('')
+      + `<button type="button" class="emo-btn" data-emo="" aria-label="Sin emoji" title="Sin emoji" style="font-size:13px">Ninguno</button>`;
+    const paintCol = () => $('#styleColors').innerHTML = `<button type="button" class="swatch none" data-col="" aria-pressed="${!color}" aria-label="Sin color" title="Sin color"></button>`
+      + COLORS.map(c => `<button type="button" class="swatch" data-col="${c}" style="background:${c}" aria-pressed="${color === c}" aria-label="Color ${c}"></button>`).join('');
+    paintEmo(); paintCol();
+    $('#styleEmojis').onclick = e => { const b = e.target.closest('[data-emo]'); if (b) { $('#styleEmoji').value = b.dataset.emo; paintEmo(); } };
+    $('#styleColors').onclick = e => { const b = e.target.closest('[data-col]'); if (b) { color = b.dataset.col; paintCol(); } };
+    $('#styleEmoji').oninput = paintEmo;
+    d.returnValue = '';
+    d.showModal();
+    const onClose = () => {
+      d.removeEventListener('close', onClose);
+      if (d.returnValue !== 'ok') return;
+      o.emoji = [...$('#styleEmoji').value.trim()].slice(0, 2).join('') || '';
+      o.color = color || '';
+      save(); render();
+      if ($('#listSheet').open) openListSheet();
+    };
+    d.addEventListener('close', onClose);
+  });
+
   $('#imCat').addEventListener('click', () => {
     if (!imCtx || imCtx.type !== 'list') return;
     const id = imCtx.id;
@@ -2201,6 +2664,8 @@ tailwind.config = {
     toast(ok ? 'Datos de YouTube cargados.' : `No se han podido cargar: ${apiError}.`);
   });
   $('#viewSel').addEventListener('change', e => { state.view = e.target.value; save(); renderList(); });
+  $('#filterSel').addEventListener('change', e => { state.filter = e.target.value; save(); renderList(); renderSelBar(); });
+  $('#optMarkSeen').addEventListener('change', e => { state.settings.markSeen = e.target.checked; save(); });
   $('#sortSel').addEventListener('change', e => {
     const val = e.target.value;
     if (API_SORTS.includes(val) && !state.apiKey) {
@@ -2284,7 +2749,7 @@ tailwind.config = {
     shareSheet.close();
     let id = b.dataset.share;
     if (id === '__new') {
-      const name = (prompt('Nombre de la nueva lista:') || '').trim();
+      const name = await askText('Nombre de la nueva lista', '', 'Por ejemplo: Recetas');
       if (!name) return;
       const l = { id: uid(), name, videos: [] };
       state.lists.push(l); id = l.id;
@@ -2318,6 +2783,68 @@ tailwind.config = {
     window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
   }
 
+  /* ---------- Tema ---------- */
+  function applyTheme() {
+    const t = state.settings.theme;
+    if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+    const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.setAttribute('content', dark ? '#121722' : '#EEF1F6'); });
+  }
+  $('#optTheme').addEventListener('change', e => { state.settings.theme = e.target.value; save(); applyTheme(); });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+
+  /* ---------- Copia de seguridad ---------- */
+  const canShareFiles = (() => { try { return !!(navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x.json', { type: 'application/json' })] })); } catch (e) { return false; } })();
+  $('#shareBkBtn').hidden = !canShareFiles;
+  $('#bkShare').hidden = !canShareFiles;
+  function markBackup() { state.lastBackup = Date.now(); state.backupSnooze = 0; save(); renderBackupHint(); }
+  async function shareBackup() {
+    const { blob, name } = buildBackup();
+    try {
+      await navigator.share({ files: [new File([blob], name, { type: 'application/json' })], title: 'Copia de la Videoteca' });
+      markBackup(); toast('Copia enviada.');
+    } catch (e) { if (e && e.name !== 'AbortError') toast('No se ha podido enviar la copia.'); }
+  }
+  function daysSince(t) { return t ? Math.floor((Date.now() - t) / 86400000) : null; }
+  function renderBackupHint() {
+    const every = Number(state.settings.backupEvery);
+    const total = state.lists.reduce((a, l) => a + l.videos.length, 0);
+    const d = daysSince(state.lastBackup);
+    const snoozed = state.backupSnooze && Date.now() - state.backupSnooze < 3 * 86400000;
+    const due = every > 0 && total > 0 && !snoozed && (d === null || d >= every);
+    $('#backupHint').hidden = !due;
+    if (due) $('#backupHintText').textContent = d === null
+      ? `Todavía no has guardado ninguna copia de tus ${total} vídeos. Si se borran los datos del navegador, se perderían.`
+      : `Hace ${d} días que no guardas una copia de tus listas.`;
+    $('#bkLast').textContent = state.lastBackup ? `Última copia: ${new Date(state.lastBackup).toLocaleDateString('es')} (${d === 0 ? 'hoy' : 'hace ' + d + ' día' + (d === 1 ? '' : 's')}).` : 'Aún no has hecho ninguna copia.';
+  }
+  $('#bkSave').addEventListener('click', () => exportData());
+  $('#bkShare').addEventListener('click', shareBackup);
+  $('#shareBkBtn').addEventListener('click', shareBackup);
+  $('#bkLater').addEventListener('click', () => { state.backupSnooze = Date.now(); save(); renderBackupHint(); });
+  $('#optBackup').addEventListener('change', e => { state.settings.backupEvery = e.target.value; save(); renderBackupHint(); });
+
+  /* ---------- Cabecera que se encoge al bajar ---------- */
+  let shrinkRaf = 0;
+  const onScroll = () => {
+    if (shrinkRaf) return;
+    shrinkRaf = requestAnimationFrame(() => {
+      shrinkRaf = 0;
+      const y = window.scrollY;
+      const on = document.body.classList.contains('shrunk') ? y > 10 : y > 50;
+      document.body.classList.toggle('shrunk', on);
+      document.documentElement.style.setProperty('--hdr-h', $('#appHeader').offsetHeight + 'px');
+    });
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  // La cabecera es fija: un hueco de su altura completa evita que el contenido salte al encogerla
+  function sizeHeader() {
+    const h = $('#appHeader');
+    if (!document.body.classList.contains('shrunk')) $('#hdrSpacer').style.height = h.offsetHeight + 'px';
+    document.documentElement.style.setProperty('--hdr-h', h.offsetHeight + 'px');
+  }
+  window.addEventListener('resize', sizeHeader);
+
   /* ---------- Pantalla completa ---------- */
   const root = document.documentElement;
   const fsSupported = !!(root.requestFullscreen || root.webkitRequestFullscreen);
@@ -2348,8 +2875,12 @@ tailwind.config = {
     document.addEventListener('click', first, { once: true, capture: true });
   }
 
+  applyTheme();
   applyLayout();
   render();
+  renderBackupHint();
+  sizeHeader();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(sizeHeader);
   handleShare();
   // Completa la información que falte de otras sesiones
   const all = state.lists.flatMap(l => l.videos);

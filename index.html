@@ -447,6 +447,10 @@ tailwind.config = {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m0 0L7 8m5-5 5 5M4 19h16"/></svg>
             Importar
           </button>
+          <button class="menu-item" role="menuitem" id="fullBtn" type="button" hidden>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+            <span id="fullBtnText">Pantalla completa</span>
+          </button>
           <button class="menu-item" role="menuitem" id="installBtn" type="button" hidden>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M12 7v8M9 12l3 3 3-3"/></svg>
             Instalar app
@@ -704,6 +708,13 @@ tailwind.config = {
       <div id="catAdmin" class="flex flex-col gap-2"></div>
       <button class="btn mt-2" type="button" id="catAdd">+ Nueva categoría</button>
     </section>
+    <label class="mt-5 flex items-start gap-3 rounded-xl p-4 cursor-pointer" style="border:1.5px solid var(--line)" id="optFullWrap">
+      <input type="checkbox" id="optFull" class="mt-0.5 flex-none" style="width:22px;height:22px;accent-color:var(--accent)">
+      <span>
+        <span class="block font-semibold text-[15.5px]">Pantalla completa al abrir la app</span>
+        <span class="block text-muted text-[14px] mt-1 leading-relaxed">Oculta la barra de estado y la de navegación. Por seguridad, el navegador solo lo permite tras tocar la pantalla, así que se activa con tu primer toque. Para salir, desliza desde el borde o usa Más opciones.</span>
+      </span>
+    </label>
     <label class="mt-5 flex items-start gap-3 rounded-xl p-4 cursor-pointer" style="border:1.5px solid var(--line)">
       <input type="checkbox" id="optNoDup" class="mt-0.5 flex-none" style="width:22px;height:22px;accent-color:var(--accent)">
       <span>
@@ -870,6 +881,7 @@ tailwind.config = {
     if (!s.settings || typeof s.settings !== 'object') s.settings = {};
     if (typeof s.settings.noDup !== 'boolean') s.settings.noDup = true;
     if (typeof s.settings.openWith !== 'string') s.settings.openWith = 'ask';
+    if (typeof s.settings.fullscreen !== 'boolean') s.settings.fullscreen = false;
     if (!Array.isArray(s.settings.browsers)) s.settings.browsers = ['chrome', 'firefox', 'edge', 'samsung', 'brave', 'youtube'];
     if (!['classic', 'a', 'b', 'c'].includes(s.settings.layout)) s.settings.layout = 'classic';
     if (!Array.isArray(s.links)) s.links = [
@@ -2035,6 +2047,7 @@ tailwind.config = {
     $('#optNoDup').checked = state.settings.noDup;
     renderCatAdmin();
     renderOpenSettings();
+    $('#optFull').checked = state.settings.fullscreen;
     document.querySelectorAll('input[name="layout"]').forEach(r => { r.checked = r.value === state.settings.layout; });
     setDlg.showModal();
   });
@@ -2303,6 +2316,36 @@ tailwind.config = {
   });
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  }
+
+  /* ---------- Pantalla completa ---------- */
+  const root = document.documentElement;
+  const fsSupported = !!(root.requestFullscreen || root.webkitRequestFullscreen);
+  const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  function enterFull() {
+    const fn = root.requestFullscreen || root.webkitRequestFullscreen;
+    if (!fn || isFull()) return Promise.resolve();
+    return Promise.resolve(fn.call(root, { navigationUI: 'hide' })).catch(() => {});
+  }
+  function exitFull() {
+    const fn = document.exitFullscreen || document.webkitExitFullscreen;
+    if (fn && isFull()) return Promise.resolve(fn.call(document)).catch(() => {});
+    return Promise.resolve();
+  }
+  function syncFullBtn() { $('#fullBtnText').textContent = isFull() ? 'Salir de pantalla completa' : 'Pantalla completa'; }
+  $('#fullBtn').hidden = !fsSupported;
+  $('#optFullWrap').hidden = !fsSupported;
+  $('#fullBtn').addEventListener('click', () => { (isFull() ? exitFull() : enterFull()).then(syncFullBtn); });
+  document.addEventListener('fullscreenchange', syncFullBtn);
+  document.addEventListener('webkitfullscreenchange', syncFullBtn);
+  $('#optFull').addEventListener('change', e => {
+    state.settings.fullscreen = e.target.checked; save();
+    if (e.target.checked) enterFull().then(syncFullBtn); else exitFull().then(syncFullBtn);
+  });
+  // Al abrir: se activa con el primer toque, si está marcado en Ajustes
+  if (fsSupported && state.settings.fullscreen) {
+    const first = () => { if (state.settings.fullscreen) enterFull().then(syncFullBtn); };
+    document.addEventListener('click', first, { once: true, capture: true });
   }
 
   applyLayout();

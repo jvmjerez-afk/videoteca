@@ -1,11 +1,11 @@
-// Videoteca: service worker (versión 023)
-// - La app (index.html) se pide primero a internet, para recibir siempre la última versión;
-//   sin conexión se usa la copia guardada.
-// - Tipografías, Tailwind y miniaturas se guardan para que la app abra rápido y sin conexión.
-// - Las peticiones a la API de YouTube y a noembed nunca se guardan.
-const VERSION = 'videoteca-v023';
+// Videoteca: service worker (versión 028)
+// Arranque rápido: la app se abre al instante desde la copia guardada en el móvil
+// y, mientras tanto, se descarga por detrás la versión de GitHub. Si ha cambiado,
+// la app avisa con «Hay una versión nueva» para recargarla.
+// Las peticiones a la API de YouTube y a noembed nunca se guardan.
+const VERSION = 'videoteca-v028';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
-const RUNTIME_HOSTS = ['cdn.tailwindcss.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'i.ytimg.com'];
+const RUNTIME_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'i.ytimg.com'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -19,19 +19,33 @@ self.addEventListener('activate', event => {
   );
 });
 
+async function notifyUpdate() {
+  const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  list.forEach(c => c.postMessage({ type: 'update' }));
+}
+
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  // La propia app: primero internet, si falla la copia guardada
+  // La propia app: copia guardada al instante y actualización por detrás
   if (req.mode === 'navigate') {
-    event.respondWith(
-      fetch(req).then(res => {
-        if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put('./index.html', copy)); }
+    event.respondWith((async () => {
+      const cache = await caches.open(VERSION);
+      const cached = await cache.match('./index.html');
+      const net = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(async res => {
+        if (res && res.ok) {
+          const fresh = await res.clone().text();
+          const old = cached ? await cached.clone().text() : null;
+          await cache.put('./index.html', new Response(fresh, { headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
+          if (old !== null && old !== fresh) await notifyUpdate();
+        }
         return res;
-      }).catch(() => caches.match('./index.html').then(r => r || caches.match('./')))
-    );
+      }).catch(() => null);
+      if (cached) { event.waitUntil(net); return cached; }
+      return (await net) || new Response('<h1>Sin conexión</h1>', { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    })());
     return;
   }
 
@@ -41,7 +55,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Tipografías, Tailwind y miniaturas: copia guardada al instante y se actualiza por detrás
+  // Tipografías y miniaturas: copia guardada al instante y se actualiza por detrás
   if (RUNTIME_HOSTS.includes(url.hostname)) {
     event.respondWith(
       caches.open(VERSION + '-rt').then(cache =>
@@ -52,5 +66,4 @@ self.addEventListener('fetch', event => {
       )
     );
   }
-  // Todo lo demás (API de YouTube, noembed…) va directo a internet
 });

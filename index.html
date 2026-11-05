@@ -2949,7 +2949,7 @@
     installEvent = null; $('#installBtn').hidden = true;
   });
   /* ---------- Actualizaciones ---------- */
-  const APP_VERSION = 30;
+  const APP_VERSION = 31;
   const ONLINE_APP = location.protocol === 'https:' || location.hostname === 'localhost';
   let lastCheck = 0, updateShown = false;
   async function latestVersion() {
@@ -2957,21 +2957,25 @@
     const m = txt.match(/const APP_VERSION = (\d+);/);
     return m ? Number(m[1]) : null;
   }
-  // Borra la copia guardada de la app para que la próxima carga venga de GitHub
+  // Descarga la versión nueva saltándose la caché de GitHub, la deja guardada en el móvil y recarga
   async function doUpdate() {
+    toast('Actualizando…');
     try {
-      const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
-      if (reg) await reg.update().catch(() => {});
-      if (window.caches) {
+      const txt = await (await fetch('./index.html?actualizar=' + Date.now(), { cache: 'no-store' })).text();
+      const v = Number((txt.match(/const APP_VERSION = (\d+);/) || [])[1] || 0);
+      if (v && window.caches) {
         for (const k of await caches.keys()) {
           if (!k.startsWith('videoteca-') || k.endsWith('-rt')) continue;
           const c = await caches.open(k);
-          await c.delete('./index.html'); await c.delete('./');
-          for (const r of await c.keys()) { if (new URL(r.url).pathname.endsWith('/') || r.url.includes('index.html')) await c.delete(r); }
+          await c.put('./index.html', new Response(txt, { headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
+          await c.delete('./');
         }
       }
+      const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+      if (reg) await reg.update().catch(() => {});
     } catch (e) {}
-    location.reload();
+    // Dirección única: aunque no haya copia guardada, GitHub no puede devolver la versión vieja
+    location.replace(location.pathname + '?actualizar=' + Date.now());
   }
   async function checkUpdate(manual) {
     if (!ONLINE_APP) { if (manual) toast('Solo se puede comprobar con la app abierta desde su dirección web.'); return; }
@@ -3110,6 +3114,7 @@
     document.addEventListener('click', first, { once: true, capture: true });
   }
 
+  if (new URLSearchParams(location.search).has('actualizar')) history.replaceState(null, '', location.pathname);
   applyTheme();
   applyFolderColor();
   applyLayout();

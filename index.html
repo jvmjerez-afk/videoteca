@@ -379,6 +379,12 @@ tailwind.config = {
   /* Aviso de copia de seguridad */
   .hintbox{border:2px solid var(--live); background:color-mix(in srgb, var(--live) 10%, var(--surface)); border-radius:14px; padding:12px 14px; margin-bottom:16px}
 
+  .titlebtn{padding:0; border:0; background:none; color:inherit; font:inherit; letter-spacing:inherit; line-height:inherit; cursor:pointer; border-radius:8px; text-align:left}
+  .menu-item.preset{background:color-mix(in srgb, var(--accent) 12%, transparent); box-shadow:inset 0 0 0 2px var(--accent)}
+  .menu-item .deftag{flex:none; font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:999px; background:var(--accent); color:var(--accent-ink)}
+  .menu-item .count + .deftag, .menu-item .deftag + .count{margin-left:6px}
+  #shareSheetItems .menu-item .count{margin-left:auto}
+
   /* Buscador */
   .searchbox{position:relative; flex:1 1 100%}
   .searchbox > svg{position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none}
@@ -530,7 +536,7 @@ tailwind.config = {
 
   <header id="appHeader" class="flex flex-wrap items-end justify-between gap-4 pt-6 sm:pt-10 pb-5">
     <div>
-      <h1 id="appTitle" class="font-display font-extrabold text-[40px] sm:text-[56px] leading-[0.95] tracking-tight">Videoteca</h1>
+      <h1 id="appTitle" class="font-display font-extrabold text-[40px] sm:text-[56px] leading-[0.95] tracking-tight"><button type="button" id="titleBtn" class="titlebtn" title="Toca para pantalla completa">Videoteca</button></h1>
     </div>
     <div id="hdrSearchSlot" class="hdr-search"></div>
     <div id="hdrBtns" class="flex flex-wrap gap-1">
@@ -877,6 +883,13 @@ tailwind.config = {
       </span>
     </label>
     <label class="mt-5 flex items-start gap-3 rounded-xl p-4 cursor-pointer" style="border:1.5px solid var(--line)">
+      <input type="checkbox" id="optShareClose" class="mt-0.5 flex-none" style="width:22px;height:22px;accent-color:var(--accent)">
+      <span>
+        <span class="block font-semibold text-[15.5px]">Cerrar la app después de guardar un vídeo compartido</span>
+        <span class="block text-muted text-[14px] mt-1 leading-relaxed">Cuando compartes un vídeo desde otra app (por ejemplo YouTube) y eliges la lista, la Videoteca se cierra sola y vuelves a donde estabas.</span>
+      </span>
+    </label>
+    <label class="mt-5 flex items-start gap-3 rounded-xl p-4 cursor-pointer" style="border:1.5px solid var(--line)">
       <input type="checkbox" id="optMarkSeen" class="mt-0.5 flex-none" style="width:22px;height:22px;accent-color:var(--accent)">
       <span>
         <span class="block font-semibold text-[15.5px]">Marcar como visto al abrir</span>
@@ -966,8 +979,12 @@ tailwind.config = {
   <div class="grab" aria-hidden="true"></div>
   <p id="ssTitle" class="font-display font-extrabold text-xl px-5 pt-2">¿A qué lista lo añado?</p>
   <p id="ssWhat" class="text-muted text-[13.5px] px-5 pb-2" style="overflow-wrap:anywhere"></p>
+  <p class="text-muted text-[13px] px-5 pb-1">Mantén pulsada una lista para dejarla como lista por defecto.</p>
   <div class="cm-body" id="shareSheetItems"></div>
-  <div class="px-2 pb-3"><button class="btn w-full" type="button" id="ssCancel">Cancelar</button></div>
+  <div class="px-2 pb-3 flex flex-col gap-2">
+    <button class="btn primary w-full" type="button" id="ssGo" style="min-height:50px"></button>
+    <button class="btn w-full" type="button" id="ssCancel">Cancelar</button>
+  </div>
 </dialog>
 
 <dialog id="browserSheet" class="sheet" aria-labelledby="bsTitle">
@@ -1140,6 +1157,7 @@ tailwind.config = {
     if (typeof s.settings.openWith !== 'string') s.settings.openWith = 'ask';
     if (typeof s.settings.fullscreen !== 'boolean') s.settings.fullscreen = false;
     if (typeof s.settings.markSeen !== 'boolean') s.settings.markSeen = true;
+    if (typeof s.settings.shareClose !== 'boolean') s.settings.shareClose = false;
     if (!['auto', 'light', 'dark'].includes(s.settings.theme)) s.settings.theme = 'auto';
     if (!['0', '7', '30'].includes(s.settings.backupEvery)) s.settings.backupEvery = '7';
     if (!Array.isArray(s.settings.browsers)) s.settings.browsers = ['chrome', 'firefox', 'edge', 'samsung', 'brave', 'youtube'];
@@ -2472,6 +2490,7 @@ tailwind.config = {
   $('#settingsBtn').addEventListener('click', () => {
     $('#optNoDup').checked = state.settings.noDup;
     $('#optMarkSeen').checked = state.settings.markSeen;
+    $('#optShareClose').checked = state.settings.shareClose;
     $('#optTheme').value = state.settings.theme;
     $('#optBackup').value = state.settings.backupEvery;
     renderBackupHint();
@@ -2666,6 +2685,7 @@ tailwind.config = {
   $('#viewSel').addEventListener('change', e => { state.view = e.target.value; save(); renderList(); });
   $('#filterSel').addEventListener('change', e => { state.filter = e.target.value; save(); renderList(); renderSelBar(); });
   $('#optMarkSeen').addEventListener('change', e => { state.settings.markSeen = e.target.checked; save(); });
+  $('#optShareClose').addEventListener('change', e => { state.settings.shareClose = e.target.checked; save(); });
   $('#sortSel').addEventListener('change', e => {
     const val = e.target.value;
     if (API_SORTS.includes(val) && !state.apiKey) {
@@ -2728,26 +2748,34 @@ tailwind.config = {
     const ids = raw.split(/\s+/).filter(w => !/^https?:/i.test(w) && parseInput(w) && /^(PL|UU|OL)[\w-]{10,}$/.test(w));
     return [...new Set([...found, ...ids])];
   }
-  function openShareSheet(links) {
-    sharedText = links.join('\n');
-    $('#ssWhat').textContent = links.length === 1 ? links[0] : `${links.length} enlaces de YouTube`;
-    const row = (l, inCat) => `<button class="menu-item${inCat ? ' in-cat' : ''}" type="button" data-share="${l.id}">
-        <span class="min-w-0 truncate">${esc(l.name)}</span><span class="count">${l.videos.length}</span></button>`;
+  let sharePick = null;
+  // Preseleccionada: la lista por defecto si la hay; si no, la última elegida
+  const sharePreset = () => [state.shareDefault, state.lastShareList].find(id => id && getList(id)) || null;
+  function paintShareSheet() {
+    const def = state.shareDefault && getList(state.shareDefault) ? state.shareDefault : null;
+    const row = (l, inCat) => `<button class="menu-item${inCat ? ' in-cat' : ''}${l.id === sharePick ? ' preset' : ''}" type="button" data-share="${l.id}"${l.id === sharePick ? ' aria-current="true"' : ''}>
+        ${l.emoji ? `<span class="lemo">${esc(l.emoji)}</span>` : ''}<span class="min-w-0 truncate">${esc(l.name)}</span>${l.id === def ? '<span class="deftag">Por defecto</span>' : ''}<span class="count">${l.videos.length}</span></button>`;
     $('#shareSheetItems').innerHTML =
       state.categories.map(c => catLists(c).length ? `<p class="sheet-label">${FOLDER_SVG}${esc(c.name)}</p>` + catLists(c).map(l => row(l, true)).join('') : '').join('') +
       (state.categories.length && rootLists().length ? '<p class="sheet-label">Sin categoría</p>' : '') +
       rootLists().map(l => row(l, false)).join('') +
       `<button class="menu-item" type="button" data-share="__new"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva lista…</button>`;
-    shareSheet.showModal();
-    const first = $('#shareSheetItems .menu-item'); if (first) first.focus();
+    const pl = getList(sharePick);
+    $('#ssGo').hidden = !pl;
+    if (pl) $('#ssGo').textContent = `Guardar en «${pl.name}»`;
   }
-  $('#ssCancel').addEventListener('click', () => shareSheet.close());
-  shareSheet.addEventListener('click', e => { if (e.target === shareSheet) shareSheet.close(); });
-  $('#shareSheetItems').addEventListener('click', async e => {
-    const b = e.target.closest('[data-share]');
-    if (!b) return;
+  function openShareSheet(links) {
+    sharedText = links.join('\n');
+    $('#ssWhat').textContent = links.length === 1 ? links[0] : `${links.length} enlaces de YouTube`;
+    sharePick = sharePreset();
+    paintShareSheet();
+    shareSheet.showModal();
+    const cur = $('#shareSheetItems .preset');
+    if (cur) { cur.scrollIntoView({ block: 'center' }); $('#ssGo').focus(); }
+    else { const first = $('#shareSheetItems .menu-item'); if (first) first.focus(); }
+  }
+  async function saveShared(id) {
     shareSheet.close();
-    let id = b.dataset.share;
     if (id === '__new') {
       const name = await askText('Nombre de la nueva lista', '', 'Por ejemplo: Recetas');
       if (!name) return;
@@ -2755,10 +2783,48 @@ tailwind.config = {
       state.lists.push(l); id = l.id;
     }
     if (selecting) setSelecting(false);
+    state.lastShareList = id;
     state.activeId = id; save(); render();
     await addVideos(sharedText, id);
     toast(lastAddMsg || 'Hecho.');
+    if (state.settings.shareClose) {
+      // Se deja ver el aviso un momento y se cierra la app
+      setTimeout(() => {
+        window.close();
+        setTimeout(() => toast('Guardado. Android no ha dejado cerrar la app: vuelve atrás para regresar.'), 500);
+      }, 1200);
+    }
+  }
+  $('#ssCancel').addEventListener('click', () => shareSheet.close());
+  $('#ssGo').addEventListener('click', () => { if (sharePick) saveShared(sharePick); });
+  shareSheet.addEventListener('click', e => { if (e.target === shareSheet) shareSheet.close(); });
+  $('#shareSheetItems').addEventListener('click', e => {
+    if (Date.now() < suppressUntil) return;
+    const b = e.target.closest('[data-share]');
+    if (b) saveShared(b.dataset.share);
   });
+  // Mantener pulsada una lista: queda como lista por defecto (otra pulsación larga la desmarca)
+  let ssTimer = null, ssStart = null;
+  $('#shareSheetItems').addEventListener('pointerdown', e => {
+    const b = e.target.closest('[data-share]');
+    if (!b || b.dataset.share === '__new') return;
+    clearTimeout(ssTimer); ssStart = { x: e.clientX, y: e.clientY };
+    b.classList.add('pressing');
+    ssTimer = setTimeout(() => {
+      ssTimer = null; b.classList.remove('pressing');
+      suppressUntil = Date.now() + 800;
+      if (navigator.vibrate) navigator.vibrate(15);
+      const id = b.dataset.share, l = getList(id);
+      if (state.shareDefault === id) { state.shareDefault = null; toast(`«${l.name}» ya no es la lista por defecto.`); }
+      else { state.shareDefault = id; sharePick = id; toast(`«${l.name}» es ahora la lista por defecto.`); }
+      save(); paintShareSheet();
+    }, 550);
+  });
+  const ssCancelPress = () => { if (ssTimer) { clearTimeout(ssTimer); ssTimer = null; } document.querySelectorAll('#shareSheetItems .pressing').forEach(x => x.classList.remove('pressing')); };
+  $('#shareSheetItems').addEventListener('pointermove', e => { if (ssTimer && ssStart && Math.hypot(e.clientX - ssStart.x, e.clientY - ssStart.y) > 10) ssCancelPress(); });
+  ['pointerup', 'pointercancel', 'scroll'].forEach(ev => $('#shareSheetItems').addEventListener(ev, ssCancelPress, true));
+  $('#shareSheetItems').addEventListener('contextmenu', e => { if (e.target.closest('[data-share]')) e.preventDefault(); });
+
   function handleShare() {
     const params = new URLSearchParams(location.search);
     if (!params.has('url') && !params.has('text') && !params.has('title')) return;
@@ -2863,6 +2929,10 @@ tailwind.config = {
   $('#fullBtn').hidden = !fsSupported;
   $('#optFullWrap').hidden = !fsSupported;
   $('#fullBtn').addEventListener('click', () => { (isFull() ? exitFull() : enterFull()).then(syncFullBtn); });
+  $('#titleBtn').addEventListener('click', () => {
+    if (!fsSupported) return;
+    (isFull() ? exitFull() : enterFull()).then(syncFullBtn);
+  });
   document.addEventListener('fullscreenchange', syncFullBtn);
   document.addEventListener('webkitfullscreenchange', syncFullBtn);
   $('#optFull').addEventListener('change', e => {

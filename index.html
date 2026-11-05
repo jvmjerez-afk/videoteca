@@ -70,8 +70,8 @@
     .layout{display:grid; grid-template-columns:250px minmax(0,1fr); gap:40px; align-items:start}
     .side{position:sticky; top:16px; margin-bottom:0; max-height:calc(100vh - 32px); overflow-y:auto; padding:2px}
   }
-  .tabs{display:flex; flex-direction:column; gap:6px}
-  .tab{display:flex; width:100%; align-items:center; gap:10px; padding:11px 12px 11px 14px; border-radius:10px; text-align:left;
+  .tabs{display:flex; flex-direction:column; gap:3px}
+  .tab{display:flex; width:100%; align-items:center; gap:9px; padding:7px 10px 7px 12px; border-radius:10px; text-align:left;
        border:1.5px solid var(--line); background:var(--surface); color:var(--ink); font-weight:600; font-size:15px; cursor:pointer}
   .tab .name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .tab:hover{border-color:var(--accent)}
@@ -381,7 +381,10 @@
   dialog#listSheet[open]{display:flex; flex-direction:column}
   #listSheet .ls-head{display:flex; align-items:center; gap:8px; padding:10px 8px 8px 20px; border-bottom:1.5px solid var(--line)}
   #listSheet .cm-body{flex:1; max-height:none; width:100%; max-width:720px; margin:0 auto; padding:8px 10px}
-  #listSheet .menu-item{min-height:52px; font-size:16px}
+  #listSheet .menu-item{min-height:42px; padding:7px 12px; font-size:15.5px; gap:10px}
+  #listSheet .menu-item.in-cat{padding-left:30px}
+  #listSheet .sheet-label{padding:8px 12px 2px}
+  #listSheet .cm-body{padding-top:4px}
   #listSheet .menu-item .count{font-size:13.5px}
   #listSheet .ls-foot{width:100%; max-width:720px; margin:0 auto; padding:8px 10px 12px; display:flex; gap:8px}
   #listSheet .ls-foot .btn{flex:1}
@@ -394,6 +397,15 @@
   .menu-item .deftag{flex:none; font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:999px; background:var(--accent); color:var(--accent-ink)}
   .menu-item .count + .deftag, .menu-item .deftag + .count{margin-left:6px}
   #shareSheetItems .menu-item .count{margin-left:auto}
+
+  .pinico{flex:none; color:var(--accent)}
+  .pinbadge{display:none}
+  body.lay-b .tab > .pinico{display:none}
+  body.lay-b .pinbadge{display:grid; position:absolute; top:-6px; left:-8px; width:18px; height:18px; border-radius:50%; place-items:center; background:var(--surface); box-shadow:0 0 0 1.5px var(--accent)}
+  body.lay-b .pinbadge .pinico{width:11px; height:11px}
+  .fold{color:var(--folder, var(--muted)); flex:none}
+  .tab.cat.has-color .fold{color:var(--lc)}
+  body.lay-b .tab.cat .ini{color:var(--folder, var(--muted)); border-color:var(--folder, var(--line))}
 
   /* Buscador */
   .searchbox{position:relative; flex:1 1 100%}
@@ -898,6 +910,11 @@
         <option value="dark">Oscuro</option>
       </select></span>
     </section>
+    <section class="mt-5" aria-labelledby="folderTitle">
+      <p id="folderTitle" class="font-semibold text-[15.5px] mb-2">Color de las carpetas</p>
+      <div id="optFolder" class="flex flex-wrap gap-2"></div>
+      <p class="text-muted text-[13.5px] mt-2">Se aplica a los iconos de carpeta del selector de listas. Si una categoría tiene su propio color, se usa ese.</p>
+    </section>
     <section class="mt-5" aria-labelledby="bkTitle">
       <p id="bkTitle" class="font-semibold text-[15.5px] mb-2">Copia de seguridad</p>
       <span class="selwrap"><select id="optBackup" aria-labelledby="bkTitle" style="padding-left:13px">
@@ -1018,6 +1035,7 @@
   <div class="grab" aria-hidden="true"></div>
   <div class="cm-head"><span id="imIcon" class="fico" style="color:var(--muted);display:inline-flex"></span><p id="imTitle" class="cm-title"></p></div>
   <div class="cm-body">
+    <button class="menu-item" type="button" id="imPin"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5M9 3h6l-1 6 4 4H6l4-4z"/></svg><span id="imPinText">Anclar arriba</span></button>
     <button class="menu-item" type="button" id="imRename"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4z"/></svg>Renombrar</button>
     <button class="menu-item" type="button" id="imUp"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>Subir</button>
     <button class="menu-item" type="button" id="imDown"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>Bajar</button>
@@ -1797,15 +1815,20 @@
   });
 
   /* ---------- Pintar ---------- */
-  const FOLDER_SVG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
+  const FOLDER_SVG = '<svg class="fold" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
   const CHEV_SVG = '<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
   const catOf = l => state.categories.find(c => c.id === l.catId) || null;
   // Categorías desplegadas en esta sesión: al abrir la app todas aparecen plegadas
   const openCats = new Set();
   const toggleCat = id => { if (openCats.has(id)) openCats.delete(id); else openCats.add(id); };
-  const rootLists = () => state.lists.filter(l => !catOf(l));
+  // Las listas ancladas se muestran arriba del todo, fuera de su categoría
+  const rootLists = () => state.lists.filter(l => !catOf(l) && !l.pinned);
+  const pinnedLists = () => state.lists.filter(l => l.pinned);
+  const shownCatLists = c => state.lists.filter(l => l.catId === c.id && !l.pinned);
+  const catsInOrder = () => [...state.categories.filter(c => c.pinned), ...state.categories.filter(c => !c.pinned)];
+  const PIN_SVG = '<svg class="pinico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5M9 3h6l-1 6 4 4H6l4-4z"/></svg>';
   const catLists = c => state.lists.filter(l => l.catId === c.id);
-  const orderedLists = () => [...state.categories.flatMap(catLists), ...rootLists()];
+  const orderedLists = () => [...pinnedLists(), ...catsInOrder().flatMap(shownCatLists), ...rootLists()];
   async function newCategory() {
     const name = await askText('Nombre de la nueva categoría', '', 'Por ejemplo: Ocio, Aprender, Niños');
     if (!name) return null;
@@ -1842,24 +1865,27 @@
     const go = id => () => { if (selecting) setSelecting(false); if (reordering) setReordering(false); state.activeId = id; save(); render(); $('#addMsg').textContent = ''; };
     const styled = (b, o) => { if (o.color) { b.classList.add('has-color'); b.style.setProperty('--lc', o.color); } return b; };
     const listTab = (l, inCat) => styled(mk('tab' + (inCat ? ' in-cat' : ''),
-      `<span class="ini${l.emoji ? ' emo' : ''}" aria-hidden="true">${esc(l.emoji || l.name.trim().charAt(0) || '·')}<span class="count">${l.videos.length}</span></span>${l.emoji ? `<span class="lemo" aria-hidden="true">${esc(l.emoji)}</span>` : ''}<span class="name">${esc(l.name)}</span><span class="count c2">${l.videos.length}</span>`,
+      `<span class="ini${l.emoji ? ' emo' : ''}" aria-hidden="true">${esc(l.emoji || l.name.trim().charAt(0) || '·')}<span class="count">${l.videos.length}</span>${l.pinned ? '<span class="pinbadge">' + PIN_SVG + '</span>' : ''}</span>${l.pinned ? PIN_SVG : ''}${l.emoji ? `<span class="lemo" aria-hidden="true">${esc(l.emoji)}</span>` : ''}<span class="name">${esc(l.name)}</span><span class="count c2">${l.videos.length}</span>`,
       go(l.id), { role: 'tab', 'aria-selected': String(l.id === state.activeId), title: l.name, 'data-lid': l.id }), l);
+    pinnedLists().forEach(l => listTab(l, false));
+    const catTab = c => {
+      const ls = catLists(c), shown = shownCatLists(c);
+      const hasActive = !isAll() && ls.some(l => l.id === state.activeId);
+      const nv = ls.reduce((a, l) => a + l.videos.length, 0);
+      const ico = c.emoji ? `<span class="lemo">${esc(c.emoji)}</span>` : FOLDER_SVG;
+      styled(mk('tab cat' + (hasActive ? ' has-active' : ''),
+        `<span class="ini${c.emoji ? ' emo' : ''}" aria-hidden="true">${c.emoji ? esc(c.emoji) : FOLDER_SVG}<span class="count">${nv}</span>${c.pinned ? '<span class="pinbadge">' + PIN_SVG + '</span>' : ''}</span>${c.pinned ? PIN_SVG : ''}<span class="fico">${ico}</span><span class="name">${esc(c.name)}</span><span class="count c2" title="${ls.length} lista${ls.length === 1 ? '' : 's'} · ${nv} vídeo${nv === 1 ? '' : 's'}">${nv}</span>${CHEV_SVG}`,
+        () => { toggleCat(c.id); renderTabs(); },
+        { 'aria-expanded': String(openCats.has(c.id)), title: `Categoría ${c.name}: ${ls.length} lista${ls.length === 1 ? '' : 's'}, ${nv} vídeo${nv === 1 ? '' : 's'}`, 'data-cid': c.id }), c);
+      if (openCats.has(c.id)) shown.forEach(l => listTab(l, true));
+    };
+    state.categories.filter(c => c.pinned).forEach(catTab);
     if (state.lists.length) {
       const total = state.lists.reduce((a, l) => a + l.videos.length, 0);
       mk('tab', `<span class="ini" aria-hidden="true">★<span class="count">${total}</span></span><span class="name">Todas</span><span class="count c2">${total}</span>`,
         go(ALL), { role: 'tab', 'aria-selected': String(isAll()) });
     }
-    state.categories.forEach(c => {
-      const ls = catLists(c);
-      const hasActive = !isAll() && ls.some(l => l.id === state.activeId);
-      const nv = ls.reduce((a, l) => a + l.videos.length, 0);
-      const ico = c.emoji ? `<span class="lemo">${esc(c.emoji)}</span>` : FOLDER_SVG;
-      styled(mk('tab cat' + (hasActive ? ' has-active' : ''),
-        `<span class="ini${c.emoji ? ' emo' : ''}" aria-hidden="true">${c.emoji ? esc(c.emoji) : FOLDER_SVG}<span class="count">${nv}</span></span><span class="fico">${ico}</span><span class="name">${esc(c.name)}</span><span class="count c2" title="${ls.length} lista${ls.length === 1 ? '' : 's'} · ${nv} vídeo${nv === 1 ? '' : 's'}">${nv}</span>${CHEV_SVG}`,
-        () => { toggleCat(c.id); renderTabs(); },
-        { 'aria-expanded': String(openCats.has(c.id)), title: `Categoría ${c.name}: ${ls.length} lista${ls.length === 1 ? '' : 's'}, ${nv} vídeo${nv === 1 ? '' : 's'}`, 'data-cid': c.id }), c);
-      if (openCats.has(c.id)) ls.forEach(l => listTab(l, true));
-    });
+    state.categories.filter(c => !c.pinned).forEach(catTab);
     rootLists().forEach(l => listTab(l, false));
     mk('tab add', '<span class="ini" aria-hidden="true">+</span><span class="name">+ Nueva lista</span>', newList, { 'aria-label': 'Nueva lista' });
     mk('tab add', `<span class="ini" aria-hidden="true">${FOLDER_SVG}</span><span class="name">+ Nueva categoría</span>`,
@@ -2500,15 +2526,19 @@
     const row = (id, name, n, on) => `<button class="menu-item" type="button" data-pick="${id}"${on ? ' aria-current="true" style="background:color-mix(in srgb, var(--accent) 10%, transparent)"' : ''}>
         ${deco(getList(id))}<span class="min-w-0 truncate">${esc(name)}</span><span class="count">${n} vídeo${n === 1 ? '' : 's'}</span></button>`;
     const cur = l => !isAll() && active() && active().id === l.id;
-    $('#listSheetItems').innerHTML =
-      (state.lists.length ? row(ALL, 'Todas las listas', total, isAll()) : '') +
-      state.categories.map(c => {
-        const ls = catLists(c), open = openCats.has(c.id);
+    const pinRow = l => row(l.id, l.name, l.videos.length, cur(l)).replace('<span class="min-w-0 truncate">', PIN_SVG + '<span class="min-w-0 truncate">');
+    const catRow = c => {
+        const ls = catLists(c), shown = shownCatLists(c), open = openCats.has(c.id);
         const hasActive = ls.some(cur);
         return `<button class="menu-item cat-toggle" type="button" data-tog="${c.id}" aria-expanded="${open}"${hasActive && !open ? ' style="box-shadow:inset 0 0 0 1.5px var(--accent)"' : ''}>
-            ${c.color ? `<span class="cdot" style="--lc:${c.color}"></span>` : ''}${c.emoji ? `<span class="lemo">${esc(c.emoji)}</span>` : FOLDER_SVG}<span class="min-w-0 truncate" style="font-weight:700">${esc(c.name)}</span><span class="count">${ls.length} lista${ls.length === 1 ? '' : 's'} · ${ls.reduce((a, l) => a + l.videos.length, 0)} vídeos</span>${CHEV_SVG}</button>` +
-          (open ? (ls.length ? ls.map(l => row(l.id, l.name, l.videos.length, cur(l)).replace('class="menu-item"', 'class="menu-item in-cat"')).join('') : '<p class="text-sm text-muted" style="padding:4px 28px 8px">Sin listas</p>') : '');
-      }).join('') +
+            ${c.pinned ? PIN_SVG : ''}${c.color ? `<span class="cdot" style="--lc:${c.color}"></span>` : ''}${c.emoji ? `<span class="lemo">${esc(c.emoji)}</span>` : FOLDER_SVG}<span class="min-w-0 truncate" style="font-weight:700">${esc(c.name)}</span><span class="count">${ls.length} lista${ls.length === 1 ? '' : 's'} · ${ls.reduce((a, l) => a + l.videos.length, 0)} vídeos</span>${CHEV_SVG}</button>` +
+          (open ? (shown.length ? shown.map(l => row(l.id, l.name, l.videos.length, cur(l)).replace('class="menu-item"', 'class="menu-item in-cat"')).join('') : '<p class="text-sm text-muted" style="padding:2px 28px 6px">Sin listas</p>') : '');
+    };
+    $('#listSheetItems').innerHTML =
+      pinnedLists().map(pinRow).join('') +
+      state.categories.filter(c => c.pinned).map(catRow).join('') +
+      (state.lists.length ? row(ALL, 'Todas las listas', total, isAll()) : '') +
+      state.categories.filter(c => !c.pinned).map(catRow).join('') +
       (state.categories.length && rootLists().length ? '<p class="sheet-label">Sin categoría</p>' : '') +
       rootLists().map(l => row(l.id, l.name, l.videos.length, cur(l))).join('') ;
     if (!listSheet.open) listSheet.showModal();
@@ -2545,6 +2575,7 @@
     $('#optMarkSeen').checked = state.settings.markSeen;
     $('#optShareClose').checked = state.settings.shareClose;
     $('#optTheme').value = state.settings.theme;
+    renderFolderOpt();
     $('#optBackup').value = state.settings.backupEvery;
     renderBackupHint();
     renderCatAdmin();
@@ -2577,17 +2608,21 @@
   /* ---------- Opciones de lista o categoría (pulsación larga en el selector) ---------- */
   const im = $('#itemMenu');
   let imCtx = null, imGuard = false;
-  const groupOf = l => state.lists.filter(x => (catOf(x) ? x.catId : null) === (catOf(l) ? l.catId : null));
+  const groupOf = l => l.pinned ? pinnedLists() : state.lists.filter(x => !x.pinned && (catOf(x) ? x.catId : null) === (catOf(l) ? l.catId : null));
+  const catGroupOf = c => state.categories.filter(x => !!x.pinned === !!c.pinned);
   function imRefresh() {
     if (!imCtx) return;
     let name, list, pos, len;
     if (imCtx.type === 'cat') {
       const c = state.categories.find(x => x.id === imCtx.id); if (!c) return im.close();
-      name = c.name; pos = state.categories.indexOf(c); len = state.categories.length;
+      const g = catGroupOf(c);
+      name = c.name; pos = g.indexOf(c); len = g.length;
       $('#imIcon').innerHTML = FOLDER_SVG;
+      $('#imPinText').textContent = c.pinned ? 'Desanclar' : 'Anclar arriba';
     } else {
       const l = getList(imCtx.id); if (!l) return im.close();
       name = l.name; list = groupOf(l); pos = list.indexOf(l); len = list.length;
+      $('#imPinText').textContent = l.pinned ? 'Desanclar' : 'Anclar arriba';
       $('#imIcon').innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>';
     }
     $('#imTitle').textContent = (imCtx.type === 'cat' ? 'Categoría · ' : 'Lista · ') + name;
@@ -2608,8 +2643,10 @@
   function moveItem(dir) {
     if (!imCtx) return;
     if (imCtx.type === 'cat') {
-      const arr = state.categories, i = arr.findIndex(c => c.id === imCtx.id), j = i + dir;
-      if (i < 0 || j < 0 || j >= arr.length) return;
+      const arr = state.categories, c = arr.find(x => x.id === imCtx.id);
+      const g = c ? catGroupOf(c) : [], other = g[g.indexOf(c) + dir];
+      if (!other) return;
+      const i = arr.indexOf(c), j = arr.indexOf(other);
       [arr[i], arr[j]] = [arr[j], arr[i]];
     } else {
       const l = getList(imCtx.id), g = groupOf(l), gi = g.indexOf(l), other = g[gi + dir];
@@ -2622,6 +2659,14 @@
   im.addEventListener('click', e => { if (e.target === im && !imGuard) im.close(); });
   $('#imCancel').addEventListener('click', () => im.close());
   $('#imUp').addEventListener('click', () => moveItem(-1));
+  $('#imPin').addEventListener('click', () => {
+    if (!imCtx) return;
+    const o = imCtx.type === 'cat' ? state.categories.find(c => c.id === imCtx.id) : getList(imCtx.id);
+    if (!o) return;
+    o.pinned = !o.pinned;
+    save(); refreshAll();
+    toast(o.pinned ? `📌 «${o.name}» anclada arriba.` : `«${o.name}» ya no está anclada.`);
+  });
   $('#imDown').addEventListener('click', () => moveItem(1));
   $('#imRename').addEventListener('click', async () => {
     if (!imCtx) return;
@@ -2809,7 +2854,8 @@
     const row = (l, inCat) => `<button class="menu-item${inCat ? ' in-cat' : ''}${l.id === sharePick ? ' preset' : ''}" type="button" data-share="${l.id}"${l.id === sharePick ? ' aria-current="true"' : ''}>
         ${l.emoji ? `<span class="lemo">${esc(l.emoji)}</span>` : ''}<span class="min-w-0 truncate">${esc(l.name)}</span>${l.id === def ? '<span class="deftag">Por defecto</span>' : ''}<span class="count">${l.videos.length}</span></button>`;
     $('#shareSheetItems').innerHTML =
-      state.categories.map(c => catLists(c).length ? `<p class="sheet-label">${FOLDER_SVG}${esc(c.name)}</p>` + catLists(c).map(l => row(l, true)).join('') : '').join('') +
+      pinnedLists().map(l => row(l, false)).join('') +
+      catsInOrder().map(c => shownCatLists(c).length ? `<p class="sheet-label">${FOLDER_SVG}${esc(c.name)}</p>` + shownCatLists(c).map(l => row(l, true)).join('') : '').join('') +
       (state.categories.length && rootLists().length ? '<p class="sheet-label">Sin categoría</p>' : '') +
       rootLists().map(l => row(l, false)).join('') +
       `<button class="menu-item" type="button" data-share="__new"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva lista…</button>`;
@@ -2904,7 +2950,7 @@
     });
     window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
     // Comprobar en segundo plano si en GitHub hay una versión más nueva que la que se está usando
-    const APP_VERSION = 28;
+    const APP_VERSION = 29;
     setTimeout(async () => {
       try {
         const txt = await (await fetch('./index.html?comprobar=' + Date.now(), { cache: 'no-store' })).text();
@@ -2913,6 +2959,22 @@
       } catch (e) {}
     }, 2500);
   }
+
+  /* ---------- Color de las carpetas ---------- */
+  const FOLDER_COLORS = ['#E0A100', '#2B45F0', '#0E9F6E', '#E8590C', '#D6336C', '#7048E8', '#0B7285', '#5C940D', '#8B5E34', '#495057'];
+  function applyFolderColor() {
+    const c = state.settings.folderColor;
+    if (c) document.documentElement.style.setProperty('--folder', c); else document.documentElement.style.removeProperty('--folder');
+  }
+  function renderFolderOpt() {
+    const c = state.settings.folderColor || '';
+    $('#optFolder').innerHTML = `<button type="button" class="swatch none" data-fcol="" aria-pressed="${!c}" aria-label="Color predeterminado" title="Predeterminado"></button>`
+      + FOLDER_COLORS.map(x => `<button type="button" class="swatch" data-fcol="${x}" style="background:${x}" aria-pressed="${c === x}" aria-label="Color ${x}"></button>`).join('');
+  }
+  $('#optFolder').addEventListener('click', e => {
+    const b = e.target.closest('[data-fcol]'); if (!b) return;
+    state.settings.folderColor = b.dataset.fcol; save(); applyFolderColor(); renderFolderOpt();
+  });
 
   /* ---------- Tema ---------- */
   function applyTheme() {
@@ -3011,6 +3073,7 @@
   }
 
   applyTheme();
+  applyFolderColor();
   applyLayout();
   render();
   renderBackupHint();

@@ -902,6 +902,10 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
     </div>
+    <section class="mt-5 flex items-center gap-3 rounded-xl p-3" style="border:1.5px solid var(--line)" aria-label="Versión de la app">
+      <span class="flex-1 text-[15px]">Versión de la app: <b id="appVersion"></b></span>
+      <button class="btn sm" type="button" id="checkUpdBtn">Buscar actualizaciones</button>
+    </section>
     <section class="mt-5" aria-labelledby="themeTitle">
       <p id="themeTitle" class="font-semibold text-[15.5px] mb-2">Tema</p>
       <span class="selwrap"><select id="optTheme" aria-labelledby="themeTitle" style="padding-left:13px">
@@ -2944,20 +2948,54 @@
     await installEvent.userChoice.catch(() => {});
     installEvent = null; $('#installBtn').hidden = true;
   });
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-    navigator.serviceWorker.addEventListener('message', e => {
-      if (e.data && e.data.type === 'update') toast('Hay una versión nueva de la app.', { label: 'Actualizar', fn: () => location.reload() });
-    });
+  /* ---------- Actualizaciones ---------- */
+  const APP_VERSION = 30;
+  const ONLINE_APP = location.protocol === 'https:' || location.hostname === 'localhost';
+  let lastCheck = 0, updateShown = false;
+  async function latestVersion() {
+    const txt = await (await fetch('./index.html?comprobar=' + Date.now(), { cache: 'no-store' })).text();
+    const m = txt.match(/const APP_VERSION = (\d+);/);
+    return m ? Number(m[1]) : null;
+  }
+  // Borra la copia guardada de la app para que la próxima carga venga de GitHub
+  async function doUpdate() {
+    try {
+      const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+      if (reg) await reg.update().catch(() => {});
+      if (window.caches) {
+        for (const k of await caches.keys()) {
+          if (!k.startsWith('videoteca-') || k.endsWith('-rt')) continue;
+          const c = await caches.open(k);
+          await c.delete('./index.html'); await c.delete('./');
+          for (const r of await c.keys()) { if (new URL(r.url).pathname.endsWith('/') || r.url.includes('index.html')) await c.delete(r); }
+        }
+      }
+    } catch (e) {}
+    location.reload();
+  }
+  async function checkUpdate(manual) {
+    if (!ONLINE_APP) { if (manual) toast('Solo se puede comprobar con la app abierta desde su dirección web.'); return; }
+    lastCheck = Date.now();
+    try {
+      const v = await latestVersion();
+      if (v && v > APP_VERSION) {
+        if (manual || !updateShown) { updateShown = true; toast(`Hay una versión nueva de la app (${v}).`, { label: 'Actualizar', fn: doUpdate }); }
+      } else if (manual) toast(v ? `Ya tienes la última versión (${APP_VERSION}).` : 'No se ha podido leer la versión publicada.');
+    } catch (e) { if (manual) toast('No hay conexión para comprobar actualizaciones.'); }
+  }
+  $('#appVersion').textContent = APP_VERSION;
+  $('#checkUpdBtn').addEventListener('click', () => checkUpdate(true));
+  if ('serviceWorker' in navigator && ONLINE_APP) {
+    navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.type === 'update') checkUpdate(false); });
     window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
-    // Comprobar en segundo plano si en GitHub hay una versión más nueva que la que se está usando
-    const APP_VERSION = 29;
-    setTimeout(async () => {
-      try {
-        const txt = await (await fetch('./index.html?comprobar=' + Date.now(), { cache: 'no-store' })).text();
-        const m = txt.match(/const APP_VERSION = (\d+);/);
-        if (m && Number(m[1]) > APP_VERSION) toast('Hay una versión nueva de la app.', { label: 'Actualizar', fn: () => location.reload() });
-      } catch (e) {}
-    }, 2500);
+  }
+  if (ONLINE_APP) {
+    setTimeout(() => checkUpdate(false), 2500);
+    // Android deja la app abierta en segundo plano: al volver a ella también se comprueba
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastCheck > 60000) checkUpdate(false);
+    });
+    setInterval(() => { if (document.visibilityState === 'visible') checkUpdate(false); }, 30 * 60000);
   }
 
   /* ---------- Color de las carpetas ---------- */
